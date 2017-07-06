@@ -61,7 +61,7 @@ When you run a *Docker* registry inside your *K8s* cluster as an image cache, *d
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: kube-registry-dregsy-config
+  name: dregsy-config
   namespace: kube-system
 data:
   config.yaml: |-
@@ -119,21 +119,13 @@ spec:
         volumeMounts: 
         - name: docker-storage
           mountPath: /var/lib/docker 
-        - name: docker-config
-          mountPath: /root/.docker
       volumes:
       - name: dregsy-config
         configMap:
-          name: kube-registry-dregsy-config
+          name: dregsy-config
           items:
           - key: config.yaml
             path: config.yaml
-      - name: docker-config
-        configMap:
-          name: kube-registry-updater-config
-          items:
-          - key: docker-config.json
-            path: config.json
   volumeClaimTemplates:
     - metadata:
         name: docker-storage
