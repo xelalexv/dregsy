@@ -13,6 +13,7 @@ dockerhost: unix:///var/run/docker.sock
 tasks:
   - name: task1
     interval: 60
+    verbose: true
     source: 
       registry: source-registry.acme.com
       auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogInNlY3JldCJ9Cg==
@@ -29,6 +30,7 @@ tasks:
 - `tasks` is a list of sync tasks, with the following settings per task: 
     - `name` for the task, required
     - `interval` in seconds at which the task should be run; when omitted, the task is only run once at start up
+    - `verbose` determines whether for this task, more verbose output should be produced; defaults to `false` when omitted
     - `source` and `target` describe the source and target registry for the task, with
         - `registry` pointing to the server
         - `auth` containing the credentials for the registry in the form `{"username": "...", "password": "..."}`, `base64` encoded

@@ -154,21 +154,23 @@ func match(filterRepo, filterPath, filterTag, ref string) bool {
 }
 
 //
-func (dc *Client) PullImage(ref string, allTags bool, auth string) error {
+func (dc *Client) PullImage(ref string, allTags bool, auth string, verbose bool) error {
 	opts := &types.ImagePullOptions{
 		All:          allTags,
 		RegistryAuth: auth,
 	}
-	return dc.handleLog(dc.client.ImagePull(context.Background(), ref, *opts))
+	rc, err := dc.client.ImagePull(context.Background(), ref, *opts)
+	return dc.handleLog(rc, err, verbose)
 }
 
 //
-func (dc *Client) PushImage(image string, allTags bool, auth string) error {
+func (dc *Client) PushImage(image string, allTags bool, auth string, verbose bool) error {
 	opts := &types.ImagePushOptions{
 		All:          allTags,
 		RegistryAuth: auth,
 	}
-	return dc.handleLog(dc.client.ImagePush(context.Background(), image, *opts))
+	rc, err := dc.client.ImagePush(context.Background(), image, *opts)
+	return dc.handleLog(rc, err, verbose)
 }
 
 //
@@ -177,9 +179,12 @@ func (dc *Client) TagImage(source, target string) error {
 }
 
 //
-func (dc *Client) handleLog(rc io.ReadCloser, err error) error {
+func (dc *Client) handleLog(rc io.ReadCloser, err error, verbose bool) error {
 	if err != nil {
 		return err
+	}
+	if !verbose {
+		return nil
 	}
 	defer rc.Close()
 	terminalFd := os.Stdout.Fd()

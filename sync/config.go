@@ -41,6 +41,7 @@ type task struct {
 	Source   *location  `yaml:"source"`
 	Target   *location  `yaml:"target"`
 	Mappings []*mapping `yaml:"mappings"`
+	Verbose  bool       `yaml:"verbose"`
 	//
 	ticker *time.Ticker
 }
