@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -183,11 +184,12 @@ func (dc *Client) handleLog(rc io.ReadCloser, err error, verbose bool) error {
 	if err != nil {
 		return err
 	}
-	if !verbose {
-		return nil
-	}
 	defer rc.Close()
+	out := dc.wrOut
+	if !verbose {
+		out = ioutil.Discard
+	}
 	terminalFd := os.Stdout.Fd()
 	isTerminal := dc.wrOut == os.Stdout && terminal.IsTerminal(int(terminalFd))
-	return jsonmessage.DisplayJSONMessagesStream(rc, dc.wrOut, terminalFd, isTerminal, nil)
+	return jsonmessage.DisplayJSONMessagesStream(rc, out, terminalFd, isTerminal, nil)
 }
