@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -103,6 +104,22 @@ func (dc *Client) Open() error {
 		}
 	}
 	return err
+}
+
+//
+func (dc *Client) Ping(attempts int, sleep time.Duration) (types.Ping, error) {
+	var err error
+	for i := 1; ; i++ {
+		if res, err := dc.client.Ping(context.Background()); err == nil {
+			return res, err
+		}
+		if i >= attempts {
+			break
+		}
+		time.Sleep(sleep)
+	}
+	return types.Ping{},
+		fmt.Errorf("unsuccessfully pinged Docker server %d times, last error: %s", attempts, err)
 }
 
 //

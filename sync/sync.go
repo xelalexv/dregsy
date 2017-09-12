@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/client"
 	"golang.org/x/crypto/ssh/terminal"
@@ -61,6 +62,15 @@ func (s *Sync) Dispose() {
 
 //
 func (s *Sync) SyncFromConfig(conf *syncConfig) error {
+
+	// when we begin, Docker daemon may not be ready yet (e.g. on k8s)
+	LogInfo("pinging Docker server...")
+	if _, err := s.client.Ping(30, 10*time.Second); err != nil {
+		LogError(err)
+	} else {
+		LogInfo("ok")
+	}
+	LogPrintln()
 
 	// one-off tasks
 	for _, t := range conf.Tasks {
