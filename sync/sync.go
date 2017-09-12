@@ -98,7 +98,7 @@ func (s *Sync) SyncTask(t *task) {
 		LogInfo("mapping '%s' to '%s'", m.From, m.To)
 		LogPrintln()
 		src, trgt := t.mappingRefs(m)
-		if err := s.Sync(src, t.Source.Auth, trgt, t.Target.Auth, t.Verbose); err != nil {
+		if err := s.Sync(src, t.Source.Auth, trgt, t.Target.Auth, m.Tags, t.Verbose); err != nil {
 			LogError(err)
 		}
 		LogPrintln()
@@ -107,18 +107,40 @@ func (s *Sync) SyncTask(t *task) {
 }
 
 //
-func (s *Sync) Sync(srcRef, srcAuth, trgtRef, trgtAuth string, verbose bool) error {
+func (s *Sync) Sync(srcRef, srcAuth, trgtRef, trgtAuth string, tags []string, verbose bool) error {
 
-	LogInfo("pulling all tags of source image '%s'", srcRef)
-	if err := s.pull(srcRef, srcAuth, verbose); err != nil {
-		return fmt.Errorf("error pulling source image '%s': %v\n", srcRef, err)
+	LogInfo("pulling source image '%s'", srcRef)
+	var err error
+	if len(tags) == 0 {
+		if err = s.pull(srcRef, srcAuth, true, verbose); err != nil {
+			return fmt.Errorf("error pulling source image '%s': %v\n", srcRef, err)
+		}
+	} else {
+		for _, tag := range tags {
+			srcRefTagged := fmt.Sprintf("%s:%s", srcRef, tag)
+			if err = s.pull(srcRefTagged, srcAuth, false, verbose); err != nil {
+				return fmt.Errorf("error pulling source image '%s': %v\n", srcRefTagged, err)
+			}
+		}
 	}
 	LogPrintln()
 
 	LogInfo("relevant tags")
-	srcImages, err := s.list(srcRef)
-	if err != nil {
-		LogError(fmt.Errorf("error listing all tags of source image '%s': %v\n", srcRef, err))
+	var srcImages []*docker.Image
+	if len(tags) == 0 {
+		srcImages, err = s.list(srcRef)
+		if err != nil {
+			LogError(fmt.Errorf("error listing all tags of source image '%s': %v\n", srcRef, err))
+		}
+	} else {
+		for _, tag := range tags {
+			srcRefTagged := fmt.Sprintf("%s:%s", srcRef, tag)
+			srcImageTagged, err := s.list(srcRefTagged)
+			if err != nil {
+				LogError(fmt.Errorf("error listing source image '%s': %v\n", srcRefTagged, err))
+			}
+			srcImages = append(srcImages, srcImageTagged...)
+		}
 	}
 	for _, img := range srcImages {
 		LogInfo(" - %s", img.RefWithTags())
@@ -132,7 +154,7 @@ func (s *Sync) Sync(srcRef, srcAuth, trgtRef, trgtAuth string, verbose bool) err
 	}
 	LogPrintln()
 
-	LogInfo("pushing all tags of target image")
+	LogInfo("pushing target image")
 	if err := s.push(trgtRef, trgtAuth, verbose); err != nil {
 		return fmt.Errorf("error pushing target image: %v\n", err)
 	}
@@ -141,8 +163,8 @@ func (s *Sync) Sync(srcRef, srcAuth, trgtRef, trgtAuth string, verbose bool) err
 }
 
 //
-func (s *Sync) pull(ref, auth string, verbose bool) error {
-	return s.client.PullImage(ref, true, auth, verbose)
+func (s *Sync) pull(ref, auth string, allTags, verbose bool) error {
+	return s.client.PullImage(ref, allTags, auth, verbose)
 }
 
 //

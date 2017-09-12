@@ -14,27 +14,28 @@ tasks:
   - name: task1
     interval: 60
     verbose: true
-    source: 
+    source:
       registry: source-registry.acme.com
       auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogInNlY3JldCJ9Cg==
-    target: 
+    target:
       registry: dest-registry.acme.com
       auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogImFsc29zZWNyZXQifQo=
     mappings:
       - from: test/image
         to: archive/test/image
+        tags: ['0.1.0', '0.1.1']
       - from: test/another-image
 ```
 
 - `dockerhost` sets the *Docker* host to use as the relay
-- `tasks` is a list of sync tasks, with the following settings per task: 
+- `tasks` is a list of sync tasks, with the following settings per task:
     - `name` for the task, required
     - `interval` in seconds at which the task should be run; when omitted, the task is only run once at start up
     - `verbose` determines whether for this task, more verbose output should be produced; defaults to `false` when omitted
     - `source` and `target` describe the source and target registry for the task, with
         - `registry` pointing to the server
         - `auth` containing the credentials for the registry in the form `{"username": "...", "password": "..."}`, `base64` encoded
-    - `mappings` is a list of `from`:`to` pairs that define mappings of image paths in the source registry to paths in the destination; `to` can be dropped if the path should remain the same as `from`
+    - `mappings` is a list of `from`:`to` pairs that define mappings of image paths in the source registry to paths in the destination; `to` can be dropped if the path should remain the same as `from`. Additionally, the tags being synced for a mapping can be limited by providing a `tags` list.
 
 
 ## Usage
@@ -57,7 +58,7 @@ docker run --privileged --rm -v {path to config file}:/config.yaml -v /var/run/d
 
 ### Running On *Kubernetes (K8s)*
 
-When you run a *Docker* registry inside your *K8s* cluster as an image cache, *dregsy* can come in handy as an automated updater for that cache. The pod in the definition below has two containers: `dind-daemon` which runs *Docker-in-Docker*, and `dregsy`, which uses `dind-daemon` as the relay. 
+When you run a *Docker* registry inside your *K8s* cluster as an image cache, *dregsy* can come in handy as an automated updater for that cache. The pod in the definition below has two containers: `dind-daemon` which runs *Docker-in-Docker*, and `dregsy`, which uses `dind-daemon` as the relay.
 
 ```yaml
 apiVersion: v1
@@ -71,10 +72,10 @@ data:
     tasks:
       - name: task1
         interval: 60
-        source: 
+        source:
           registry: registry.acme.com
           auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogInNlY3JldCJ9Cg==
-        target: 
+        target:
           registry: registry.my-cluster
           auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogImFsc29zZWNyZXQifQo=
         mappings:
@@ -102,25 +103,25 @@ spec:
       containers:
       - name: dregsy
         image: xelalex/dregsy
-        command: ['/dregsy', '-config=/config/config.yaml'] 
-        resources: 
-            requests: 
-                cpu: 10m 
+        command: ['/dregsy', '-config=/config/config.yaml']
+        resources:
+            requests:
+                cpu: 10m
                 memory: 256Mi
-        volumeMounts: 
+        volumeMounts:
         - name: dregsy-config
           mountPath: /config
-      - name: dind-daemon 
+      - name: dind-daemon
         image: docker:1.13.1-dind
         resources:
           requests:
             cpu: 200m
             memory: 512Mi
-        securityContext: 
-          privileged: true 
-        volumeMounts: 
+        securityContext:
+          privileged: true
+        volumeMounts:
         - name: docker-storage
-          mountPath: /var/lib/docker 
+          mountPath: /var/lib/docker
       volumes:
       - name: dregsy-config
         configMap:

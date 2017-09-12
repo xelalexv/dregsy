@@ -131,8 +131,9 @@ func (l *location) validate() error {
 
 //
 type mapping struct {
-	From string `yaml:"from"`
-	To   string `yaml:"to"`
+	From string   `yaml:"from"`
+	To   string   `yaml:"to"`
+	Tags []string `yaml:"tags"`
 }
 
 //
