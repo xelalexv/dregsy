@@ -63,8 +63,9 @@ func (s *Sync) Dispose() {
 //
 func (s *Sync) SyncFromConfig(conf *syncConfig) error {
 
-	// when we begin, Docker daemon may not be ready yet (e.g. on k8s)
-	LogInfo("pinging Docker server...")
+	// when we begin, Docker daemon may not be ready yet, e.g. when dregsy runs
+	// side by side with a Docker-in-Docker container inside a pod on k8s
+	LogInfo("pinging Docker daemon...")
 	if _, err := s.client.Ping(30, 10*time.Second); err != nil {
 		LogError(err)
 	} else {
@@ -228,7 +229,7 @@ func LogPrintln() {
 func LogInfo(msg string, params ...interface{}) {
 	msg = fmt.Sprintf(msg, params...)
 	if !toTerminal {
-		msg = fmt.Sprintf("[INFO] %s", msg)
+		msg = fmt.Sprintf("%s [INFO] %s", time.Now().Format(time.RFC3339), msg)
 	}
 	fmt.Print(msg)
 	if !strings.HasSuffix(msg, "\n") {
@@ -241,6 +242,6 @@ func LogError(err error) {
 	if toTerminal {
 		fmt.Fprintf(os.Stderr, "%v", err)
 	} else {
-		fmt.Fprintf(os.Stderr, "[ERROR] %v", err)
+		fmt.Fprintf(os.Stderr, "%s [ERROR] %v", time.Now().Format(time.RFC3339), err)
 	}
 }
