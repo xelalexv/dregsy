@@ -81,6 +81,8 @@ func (t *task) startTicking(c chan *task) {
 	}
 	t.ticker = time.NewTicker(time.Second * i)
 	go func() {
+		// fire once right at the start
+		c <- t
 		for range t.ticker.C {
 			c <- t
 		}
