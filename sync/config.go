@@ -52,16 +52,19 @@ func (t *task) validate() error {
 		return errors.New("a task requires a name")
 	}
 	if 0 < t.Interval && t.Interval < minimumTaskInterval {
-		return fmt.Errorf("minimum task interval is %d seconds", minimumTaskInterval)
+		return fmt.Errorf(
+			"minimum task interval is %d seconds", minimumTaskInterval)
 	}
 	if t.Interval < 0 {
 		return errors.New("task interval needs to be 0 or a positive integer")
 	}
 	if err := t.Source.validate(); err != nil {
-		return fmt.Errorf("source registry in task '%s' invalid: %v", t.Name, err)
+		return fmt.Errorf(
+			"source registry in task '%s' invalid: %v", t.Name, err)
 	}
 	if err := t.Target.validate(); err != nil {
-		return fmt.Errorf("target registry in task '%s' invalid: %v", t.Name, err)
+		return fmt.Errorf(
+			"target registry in task '%s' invalid: %v", t.Name, err)
 	}
 	for _, m := range t.Mappings {
 		if err := m.validate(); err != nil {

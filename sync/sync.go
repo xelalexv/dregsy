@@ -103,13 +103,15 @@ func (s *Sync) SyncFromConfig(conf *syncConfig) error {
 
 //
 func (s *Sync) SyncTask(t *task) {
-	LogInfo("syncing task '%s': '%s' to '%s'...", t.Name, t.Source.Registry, t.Target.Registry)
+	LogInfo("syncing task '%s': '%s' to '%s'...",
+		t.Name, t.Source.Registry, t.Target.Registry)
 	LogPrintln()
 	for _, m := range t.Mappings {
 		LogInfo("mapping '%s' to '%s'", m.From, m.To)
 		LogPrintln()
 		src, trgt := t.mappingRefs(m)
-		if err := s.Sync(src, t.Source.Auth, trgt, t.Target.Auth, m.Tags, t.Verbose); err != nil {
+		if err := s.Sync(src, t.Source.Auth, trgt, t.Target.Auth, m.Tags,
+			t.Verbose); err != nil {
 			LogError(err)
 		}
 		LogPrintln()
@@ -118,19 +120,22 @@ func (s *Sync) SyncTask(t *task) {
 }
 
 //
-func (s *Sync) Sync(srcRef, srcAuth, trgtRef, trgtAuth string, tags []string, verbose bool) error {
+func (s *Sync) Sync(srcRef, srcAuth, trgtRef, trgtAuth string, tags []string,
+	verbose bool) error {
 
 	LogInfo("pulling source image '%s'", srcRef)
 	var err error
 	if len(tags) == 0 {
 		if err = s.pull(srcRef, srcAuth, true, verbose); err != nil {
-			return fmt.Errorf("error pulling source image '%s': %v\n", srcRef, err)
+			return fmt.Errorf(
+				"error pulling source image '%s': %v\n", srcRef, err)
 		}
 	} else {
 		for _, tag := range tags {
 			srcRefTagged := fmt.Sprintf("%s:%s", srcRef, tag)
 			if err = s.pull(srcRefTagged, srcAuth, false, verbose); err != nil {
-				return fmt.Errorf("error pulling source image '%s': %v\n", srcRefTagged, err)
+				return fmt.Errorf(
+					"error pulling source image '%s': %v\n", srcRefTagged, err)
 			}
 		}
 	}
@@ -141,14 +146,18 @@ func (s *Sync) Sync(srcRef, srcAuth, trgtRef, trgtAuth string, tags []string, ve
 	if len(tags) == 0 {
 		srcImages, err = s.list(srcRef)
 		if err != nil {
-			LogError(fmt.Errorf("error listing all tags of source image '%s': %v\n", srcRef, err))
+			LogError(
+				fmt.Errorf("error listing all tags of source image '%s': %v\n",
+					srcRef, err))
 		}
 	} else {
 		for _, tag := range tags {
 			srcRefTagged := fmt.Sprintf("%s:%s", srcRef, tag)
 			srcImageTagged, err := s.list(srcRefTagged)
 			if err != nil {
-				LogError(fmt.Errorf("error listing source image '%s': %v\n", srcRefTagged, err))
+				LogError(
+					fmt.Errorf("error listing source image '%s': %v\n",
+						srcRefTagged, err))
 			}
 			srcImages = append(srcImages, srcImageTagged...)
 		}
@@ -184,7 +193,8 @@ func (s *Sync) list(ref string) ([]*docker.Image, error) {
 }
 
 //
-func (s *Sync) tag(images []*docker.Image, targetRef string) ([]*docker.Image, error) {
+func (s *Sync) tag(images []*docker.Image, targetRef string) ([]*docker.Image,
+	error) {
 
 	taggedImages := []*docker.Image{}
 	targetRepo, targetPath, _ := docker.SplitRef(targetRef)
@@ -197,7 +207,8 @@ func (s *Sync) tag(images []*docker.Image, targetRef string) ([]*docker.Image, e
 			Tags: img.Tags,
 		}
 		for _, tag := range img.Tags {
-			if err := s.client.TagImage(img.ID, fmt.Sprintf("%s:%s", tagged.Ref(), tag)); err != nil {
+			if err := s.client.TagImage(img.ID, fmt.Sprintf("%s:%s",
+				tagged.Ref(), tag)); err != nil {
 				return nil, err
 			}
 		}
@@ -212,7 +223,7 @@ func (s *Sync) push(ref, auth string, verbose bool) error {
 	return s.client.PushImage(ref, true, auth, verbose)
 }
 
-// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 //
 func (s *Sync) Write(p []byte) (n int, err error) {
@@ -242,6 +253,7 @@ func LogError(err error) {
 	if toTerminal {
 		fmt.Fprintf(os.Stderr, "%v", err)
 	} else {
-		fmt.Fprintf(os.Stderr, "%s [ERROR] %v", time.Now().Format(time.RFC3339), err)
+		fmt.Fprintf(
+			os.Stderr, "%s [ERROR] %v", time.Now().Format(time.RFC3339), err)
 	}
 }

@@ -15,7 +15,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/moby/moby/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -119,7 +119,9 @@ func (dc *Client) Ping(attempts int, sleep time.Duration) (types.Ping, error) {
 		time.Sleep(sleep)
 	}
 	return types.Ping{},
-		fmt.Errorf("unsuccessfully pinged Docker server %d times, last error: %s", attempts, err)
+		fmt.Errorf(
+			"unsuccessfully pinged Docker server %d times, last error: %s",
+			attempts, err)
 }
 
 //
@@ -134,7 +136,8 @@ func (dc *Client) Close() error {
 //
 func (dc *Client) ListImages(ref string) ([]*Image, error) {
 
-	imgs, err := dc.client.ImageList(context.Background(), types.ImageListOptions{})
+	imgs, err := dc.client.ImageList(
+		context.Background(), types.ImageListOptions{})
 	ret := []*Image{}
 
 	if err == nil {
@@ -172,7 +175,8 @@ func match(filterRepo, filterPath, filterTag, ref string) bool {
 }
 
 //
-func (dc *Client) PullImage(ref string, allTags bool, auth string, verbose bool) error {
+func (dc *Client) PullImage(ref string, allTags bool, auth string,
+	verbose bool) error {
 	opts := &types.ImagePullOptions{
 		All:          allTags,
 		RegistryAuth: auth,
@@ -182,7 +186,8 @@ func (dc *Client) PullImage(ref string, allTags bool, auth string, verbose bool)
 }
 
 //
-func (dc *Client) PushImage(image string, allTags bool, auth string, verbose bool) error {
+func (dc *Client) PushImage(image string, allTags bool, auth string,
+	verbose bool) error {
 	opts := &types.ImagePushOptions{
 		All:          allTags,
 		RegistryAuth: auth,
@@ -208,5 +213,6 @@ func (dc *Client) handleLog(rc io.ReadCloser, err error, verbose bool) error {
 	}
 	terminalFd := os.Stdout.Fd()
 	isTerminal := dc.wrOut == os.Stdout && terminal.IsTerminal(int(terminalFd))
-	return jsonmessage.DisplayJSONMessagesStream(rc, out, terminalFd, isTerminal, nil)
+	return jsonmessage.DisplayJSONMessagesStream(
+		rc, out, terminalFd, isTerminal, nil)
 }
