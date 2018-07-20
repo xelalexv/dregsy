@@ -57,7 +57,7 @@ func SplitRef(ref string) (repo, path, tag string) {
 		path = path[:ix]
 	}
 
-	return repo, path, tag
+	return
 }
 
 //

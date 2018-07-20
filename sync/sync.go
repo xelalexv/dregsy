@@ -42,13 +42,14 @@ func New(dockerhost, api string) (*Sync, error) {
 	if dockerhost == "" {
 		dockerhost = client.DefaultDockerHost
 	}
+
 	if api == "" {
 		api = "1.24"
 	}
 
 	cli, err := docker.NewClient(dockerhost, api, out)
 	if err != nil {
-		return nil, fmt.Errorf("cannot create Docker client: %v\n", err)
+		return nil, fmt.Errorf("cannot create Docker client: %v", err)
 	}
 
 	sync.client = cli
@@ -65,13 +66,14 @@ func (s *Sync) SyncFromConfig(conf *syncConfig) error {
 
 	// when we begin, Docker daemon may not be ready yet, e.g. when dregsy runs
 	// side by side with a Docker-in-Docker container inside a pod on k8s
+	LogPrintln()
 	LogInfo("pinging Docker daemon...")
+
 	if _, err := s.client.Ping(30, 10*time.Second); err != nil {
 		LogError(err)
 	} else {
 		LogInfo("ok")
 	}
-	LogPrintln()
 
 	// one-off tasks
 	for _, t := range conf.Tasks {
@@ -83,6 +85,7 @@ func (s *Sync) SyncFromConfig(conf *syncConfig) error {
 	// periodic tasks
 	c := make(chan *task)
 	ticking := false
+
 	for _, t := range conf.Tasks {
 		if t.Interval > 0 {
 			t.startTicking(c)
@@ -103,19 +106,20 @@ func (s *Sync) SyncFromConfig(conf *syncConfig) error {
 
 //
 func (s *Sync) SyncTask(t *task) {
-	LogInfo("syncing task '%s': '%s' to '%s'...",
+
+	LogInfo("syncing task '%s': '%s' --> '%s'",
 		t.Name, t.Source.Registry, t.Target.Registry)
-	LogPrintln()
+
 	for _, m := range t.Mappings {
 		LogInfo("mapping '%s' to '%s'", m.From, m.To)
-		LogPrintln()
 		src, trgt := t.mappingRefs(m)
-		if err := s.Sync(src, t.Source.Auth, trgt, t.Target.Auth, m.Tags,
-			t.Verbose); err != nil {
-			LogError(err)
-		}
-		LogPrintln()
+		LogError(t.Source.refreshAuth())
+		LogError(t.Target.refreshAuth())
+		LogError(t.ensureTargetExists(trgt))
+		LogError(s.Sync(
+			src, t.Source.Auth, trgt, t.Target.Auth, m.Tags, t.Verbose))
 	}
+
 	LogPrintln()
 }
 
@@ -125,58 +129,62 @@ func (s *Sync) Sync(srcRef, srcAuth, trgtRef, trgtAuth string, tags []string,
 
 	LogInfo("pulling source image '%s'", srcRef)
 	var err error
+
 	if len(tags) == 0 {
 		if err = s.pull(srcRef, srcAuth, true, verbose); err != nil {
 			return fmt.Errorf(
-				"error pulling source image '%s': %v\n", srcRef, err)
+				"error pulling source image '%s': %v", srcRef, err)
 		}
+
 	} else {
 		for _, tag := range tags {
 			srcRefTagged := fmt.Sprintf("%s:%s", srcRef, tag)
 			if err = s.pull(srcRefTagged, srcAuth, false, verbose); err != nil {
 				return fmt.Errorf(
-					"error pulling source image '%s': %v\n", srcRefTagged, err)
+					"error pulling source image '%s': %v", srcRefTagged, err)
 			}
 		}
 	}
-	LogPrintln()
 
 	LogInfo("relevant tags")
 	var srcImages []*docker.Image
+
 	if len(tags) == 0 {
 		srcImages, err = s.list(srcRef)
 		if err != nil {
 			LogError(
-				fmt.Errorf("error listing all tags of source image '%s': %v\n",
+				fmt.Errorf("error listing all tags of source image '%s': %v",
 					srcRef, err))
 		}
+
 	} else {
 		for _, tag := range tags {
 			srcRefTagged := fmt.Sprintf("%s:%s", srcRef, tag)
 			srcImageTagged, err := s.list(srcRefTagged)
 			if err != nil {
 				LogError(
-					fmt.Errorf("error listing source image '%s': %v\n",
+					fmt.Errorf("error listing source image '%s': %v",
 						srcRefTagged, err))
 			}
 			srcImages = append(srcImages, srcImageTagged...)
 		}
 	}
+
 	for _, img := range srcImages {
 		LogInfo(" - %s", img.RefWithTags())
 	}
-	LogPrintln()
 
 	LogInfo("setting tags for target image '%s'", trgtRef)
+
 	_, err = s.tag(srcImages, trgtRef)
 	if err != nil {
-		return fmt.Errorf("error setting tags: %v\n", err)
+		return fmt.Errorf("error setting tags: %v", err)
 	}
-	LogPrintln()
 
-	LogInfo("pushing target image")
+	LogInfo("pushing target image '%s'", trgtRef)
+
 	if err := s.push(trgtRef, trgtAuth, verbose); err != nil {
-		return fmt.Errorf("error pushing target image: %v\n", err)
+		return fmt.Errorf("error pushing target image: %v", err)
 	}
 
 	return nil
@@ -237,10 +245,21 @@ func LogPrintln() {
 }
 
 //
+func LogWarning(msg string, params ...interface{}) {
+	log("WARN", msg, params...)
+}
+
+//
 func LogInfo(msg string, params ...interface{}) {
+	log("INFO", msg, params...)
+}
+
+//
+func log(level, msg string, params ...interface{}) {
 	msg = fmt.Sprintf(msg, params...)
 	if !toTerminal {
-		msg = fmt.Sprintf("%s [INFO] %s", time.Now().Format(time.RFC3339), msg)
+		msg = fmt.Sprintf(
+			"%s [%s] %s", time.Now().Format(time.RFC3339), level, msg)
 	}
 	fmt.Print(msg)
 	if !strings.HasSuffix(msg, "\n") {
@@ -249,11 +268,15 @@ func LogInfo(msg string, params ...interface{}) {
 }
 
 //
-func LogError(err error) {
-	if toTerminal {
-		fmt.Fprintf(os.Stderr, "%v", err)
-	} else {
-		fmt.Fprintf(
-			os.Stderr, "%s [ERROR] %v", time.Now().Format(time.RFC3339), err)
+func LogError(err error) bool {
+	if err != nil {
+		if toTerminal {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "%s [ERROR] %v\n",
+				time.Now().Format(time.RFC3339), err)
+		}
+		return true
 	}
+	return false
 }

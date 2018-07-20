@@ -32,10 +32,47 @@ tasks:
     - `name` for the task, required
     - `interval` in seconds at which the task should be run; when omitted, the task is only run once at start up
     - `verbose` determines whether for this task, more verbose output should be produced; defaults to `false` when omitted
-    - `source` and `target` describe the source and target registry for the task, with
-        - `registry` pointing to the server
+    - `source` and `target` describe the source and target registries for the task (both required), with
+        - `registry` pointing to the server, required
         - `auth` containing the credentials for the registry in the form `{"username": "...", "password": "..."}`, `base64` encoded
+        - `auth-refresh` specifying an interval for automatic retrieval of credentials; only for *AWS ECR* (see below)
     - `mappings` is a list of `from`:`to` pairs that define mappings of image paths in the source registry to paths in the destination; `to` can be dropped if the path should remain the same as `from`. Additionally, the tags being synced for a mapping can be limited by providing a `tags` list.
+
+### *AWS ECR*
+
+If a source or target is an *AWS ECR* registry, you need to retrieve the `auth` credentials via *AWS CLI*. They would however only be good for 12 hours, which is ok for one off tasks. For periodic tasks, or to avoid retrieving the credentials manually, you can specify an `auth-refresh` interval as a *Go* `Duration`, e.g. `10h`. If set, *dregsy* will initially and whenever the refresh interval has expired retrieve new access credentials. `auth` can be omitted when `auth-refresh` is set. Setting `auth-refresh` for anything other than an *AWS ECR* registry will raise an error.
+
+Note however that you either need to set environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for the *AWS* account you want to use and a user with sufficient permissions. Or if you're running *dregsy* on an *EC2* instance in your *AWS* account, the machine should have an appropriate instance profile. An according policy could look like this:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetAuthorizationToken",
+        "ecr:CreateRepository"
+      ],
+      "Resource": ["*"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:DescribeRepositories",
+        "ecr:PutImage",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload"
+      ],
+      "Resource": "arn:aws:ecr:<your_region>:<your_account>:repository/*"
+    }
+  ]
+}
+```
 
 
 ## Usage
@@ -141,3 +178,8 @@ spec:
           matchLabels:
             purpose: registry-updater
 ```
+
+
+## Building
+
+To build the *dregsy* binary, run `make build`, for building the *dregsy* *Docker* container, run `make docker`. In either case, when you build for the first time, getting vendored dependencies may take quite a while.

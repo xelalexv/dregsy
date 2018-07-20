@@ -19,6 +19,7 @@ func main() {
 
 	config := flag.String("config", "", "path to config file")
 	flag.Parse()
+
 	if len(*config) == 0 {
 		fmt.Println("synopsis: dregsy -config={config file}\n")
 		os.Exit(1)
@@ -29,6 +30,7 @@ func main() {
 
 	sync, err := sync.New(conf.DockerHost, conf.APIVersion)
 	failOnError(err)
+
 	defer sync.Dispose()
 
 	failOnError(sync.SyncFromConfig(conf))
