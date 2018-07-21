@@ -7,7 +7,7 @@ build: vendor
 		-v $$(pwd):/go/src/github.com/xelalexv/$(REPO) \
 		-w /go/src/github.com/xelalexv/$(REPO) \
 		-e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 \
-		golang:1.10-alpine go build -v -a -tags netgo -installsuffix netgo \
+		golang:1.10 go build -v -a -tags netgo -installsuffix netgo \
 		-ldflags '-w' -o dregsy ./cmd/dregsy/
 
 docker: vendor
