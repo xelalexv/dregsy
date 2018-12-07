@@ -1,6 +1,7 @@
 REPO=dregsy
+SKOPEO_DIR = ./third_party/skopeo
 
-.PHONY: vendor build docker
+.PHONY: vendor build docker skopeo
 
 build: vendor
 	docker run --rm \
@@ -10,10 +11,14 @@ build: vendor
 		golang:1.10 go build -v -a -tags netgo -installsuffix netgo \
 		-ldflags '-w' -o dregsy ./cmd/dregsy/
 
-docker: vendor
+docker: vendor skopeo
 	docker build -t xelalex/$(REPO) -f Dockerfile .
 	docker image prune --force --filter label=stage=intermediate
 
 vendor:
 	go get github.com/kardianos/govendor
 	govendor sync
+
+skopeo:
+	git submodule update --init
+	$(MAKE) -C $(SKOPEO_DIR) binary-static DISABLE_CGO=1

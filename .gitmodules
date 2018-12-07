@@ -1,0 +1,3 @@
+[submodule "third_party/skopeo"]
+	path = third_party/skopeo
+	url = https://github.com/containers/skopeo

@@ -11,24 +11,25 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/xelalexv/dregsy/sync"
+	"github.com/xelalexv/dregsy/internal/pkg/log"
+	"github.com/xelalexv/dregsy/internal/pkg/sync"
 )
 
 //
 func main() {
 
-	config := flag.String("config", "", "path to config file")
+	configFile := flag.String("config", "", "path to config file")
 	flag.Parse()
 
-	if len(*config) == 0 {
+	if len(*configFile) == 0 {
 		fmt.Println("synopsis: dregsy -config={config file}\n")
 		os.Exit(1)
 	}
 
-	conf, err := sync.LoadConfig(*config)
+	conf, err := sync.LoadConfig(*configFile)
 	failOnError(err)
 
-	sync, err := sync.New(conf.DockerHost, conf.APIVersion)
+	sync, err := sync.New(conf)
 	failOnError(err)
 
 	defer sync.Dispose()
@@ -39,7 +40,7 @@ func main() {
 //
 func failOnError(err error) {
 	if err != nil {
-		sync.LogError(err)
+		log.Error(err)
 		os.Exit(1)
 	}
 }

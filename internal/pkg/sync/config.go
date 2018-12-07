@@ -19,7 +19,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
 
-	"github.com/xelalexv/dregsy/docker"
+	"github.com/xelalexv/dregsy/internal/pkg/log"
+	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
+	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
 )
 
 //
@@ -30,13 +32,68 @@ const minimumAuthRefreshInterval = time.Hour
  *
  */
 type syncConfig struct {
-	DockerHost string  `yaml:"dockerhost"`
-	APIVersion string  `yaml:"api-version"`
-	Tasks      []*task `yaml:"tasks"`
+	Relay      string              `yaml:"relay"`
+	Docker     *docker.RelayConfig `yaml:"docker"`
+	Skopeo     *skopeo.RelayConfig `yaml:"skopeo"`
+	DockerHost string              `yaml:"dockerhost"`  // DEPRECATED
+	APIVersion string              `yaml:"api-version"` // DEPRECATED
+	Tasks      []*task             `yaml:"tasks"`
 }
 
 //
 func (c *syncConfig) validate() error {
+
+	if c.Relay == "" {
+		c.Relay = docker.RelayID
+	}
+
+	switch c.Relay {
+
+	case docker.RelayID:
+		if c.Docker == nil {
+			if c.DockerHost == "" && c.APIVersion == "" {
+				log.Warning(
+					"not specifying the 'docker' config item is deprecated")
+			}
+			templ := "the top-level '%s' setting is deprecated, " +
+				"use 'docker' config item instead"
+			if c.DockerHost != "" {
+				log.Warning(fmt.Sprintf(templ, "dockerhost"))
+			}
+			if c.APIVersion != "" {
+				log.Warning(fmt.Sprintf(templ, "api-version"))
+			}
+			c.Docker = &docker.RelayConfig{
+				DockerHost: c.DockerHost,
+				APIVersion: c.APIVersion,
+			}
+
+		} else {
+			templ := "discarding deprecated top-level '%s' setting and " +
+				"using 'docker' config item instead"
+			if c.DockerHost != "" {
+				log.Warning(fmt.Sprintf(templ, "dockerhost"))
+				c.DockerHost = ""
+			}
+			if c.APIVersion != "" {
+				log.Warning(fmt.Sprintf(templ, "api-version"))
+				c.APIVersion = ""
+			}
+		}
+
+	case skopeo.RelayID:
+		if c.DockerHost != "" {
+			return fmt.Errorf(
+				"setting 'dockerhost' implies '%s' relay, but relay is set to '%s'",
+				docker.RelayID, c.Relay)
+		}
+
+	default:
+		return fmt.Errorf(
+			"invalid relay type: '%s', must be either '%s' or '%s'",
+			c.Relay, docker.RelayID, skopeo.RelayID)
+	}
+
 	for _, t := range c.Tasks {
 		if err := t.validate(); err != nil {
 			return err
@@ -56,7 +113,8 @@ type task struct {
 	Mappings []*mapping `yaml:"mappings"`
 	Verbose  bool       `yaml:"verbose"`
 	//
-	ticker *time.Ticker
+	ticker   *time.Ticker
+	lastTick time.Time
 }
 
 //
@@ -106,6 +164,7 @@ func (t *task) startTicking(c chan *task) {
 	}
 
 	t.ticker = time.NewTicker(time.Second * i)
+	t.lastTick = time.Now().Add(time.Second * i * (-2))
 
 	go func() {
 		// fire once right at the start
@@ -114,6 +173,15 @@ func (t *task) startTicking(c chan *task) {
 			c <- t
 		}
 	}()
+}
+
+//
+func (t *task) tooSoon() bool {
+	i := time.Duration(t.Interval)
+	if i == 0 {
+		return false
+	}
+	return time.Now().Before(t.lastTick.Add(time.Second * i / 2))
 }
 
 //
@@ -161,7 +229,7 @@ func (t *task) ensureTargetExists(ref string) error {
 
 		out, err := svc.DescribeRepositories(inpDescr)
 		if err == nil && len(out.Repositories) > 0 {
-			LogInfo("target '%s' already exists", ref)
+			log.Info("target '%s' already exists", ref)
 			return nil
 		}
 
@@ -175,7 +243,7 @@ func (t *task) ensureTargetExists(ref string) error {
 			}
 		}
 
-		LogInfo("creating target '%s'", ref)
+		log.Info("creating target '%s'", ref)
 		inpCrea := &ecr.CreateRepositoryInput{
 			RepositoryName: aws.String(path),
 		}
@@ -200,10 +268,11 @@ func normalizePath(p string) string {
  *
  */
 type location struct {
-	Registry    string         `yaml:"registry"`
-	Auth        string         `yaml:"auth"`
-	AuthRefresh *time.Duration `yaml:"auth-refresh"`
-	lastRefresh time.Time
+	Registry      string         `yaml:"registry"`
+	Auth          string         `yaml:"auth"`
+	SkipTLSVerify bool           `yaml:"skip-tls-verify"`
+	AuthRefresh   *time.Duration `yaml:"auth-refresh"`
+	lastRefresh   time.Time
 }
 
 //
@@ -231,7 +300,8 @@ func (l *location) validate() error {
 
 		} else if *l.AuthRefresh < minimumAuthRefreshInterval {
 			*l.AuthRefresh = time.Duration(minimumAuthRefreshInterval)
-			LogWarning("auth-refresh for '%s' too short, setting to minimum: %s",
+			log.Warning(
+				"auth-refresh for '%s' too short, setting to minimum: %s",
 				l.Registry, minimumAuthRefreshInterval)
 		}
 	}
@@ -268,7 +338,7 @@ func (l *location) refreshAuth() error {
 	}
 
 	_, region, account := l.getECR()
-	LogInfo("refreshing credentials for '%s'", l.Registry)
+	log.Info("refreshing credentials for '%s'", l.Registry)
 
 	sess, err := session.NewSession()
 

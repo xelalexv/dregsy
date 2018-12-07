@@ -12,9 +12,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -a \
 # stage 2: create actual dregsy container
 FROM scratch
 
-COPY --from=builder /go/bin/dregsy /
-
 # also get CA certificates
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
+COPY ./third_party/skopeo/skopeo /
+COPY --from=builder /go/bin/dregsy /
+
+ENV PATH=/
 CMD ["/dregsy", "-config=config.yaml"]
