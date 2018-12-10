@@ -115,6 +115,7 @@ type task struct {
 	//
 	ticker   *time.Ticker
 	lastTick time.Time
+	failed   bool
 }
 
 //
@@ -190,6 +191,11 @@ func (t *task) stopTicking(c chan *task) {
 		t.ticker.Stop()
 		t.ticker = nil
 	}
+}
+
+//
+func (t *task) fail(f bool) {
+	t.failed = t.failed || f
 }
 
 //

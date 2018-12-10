@@ -20,7 +20,7 @@ import (
 )
 
 //
-type Image struct {
+type image struct {
 	ID   string
 	Repo string
 	Path string
@@ -28,12 +28,12 @@ type Image struct {
 }
 
 //
-func (s *Image) Ref() string {
+func (s *image) ref() string {
 	return fmt.Sprintf("%s/%s", s.Repo, s.Path)
 }
 
 //
-func (s *Image) RefWithTags() string {
+func (s *image) refWithTags() string {
 	return fmt.Sprintf("%s/%s:%v", s.Repo, s.Path, s.Tags)
 }
 
@@ -61,7 +61,7 @@ func SplitRef(ref string) (repo, path, tag string) {
 }
 
 //
-type Client struct {
+type dockerClient struct {
 	host    string
 	version string
 	env     bool
@@ -70,8 +70,8 @@ type Client struct {
 }
 
 //
-func NewClient(host, version string, out io.Writer) (*Client, error) {
-	dc := &Client{
+func newClient(host, version string, out io.Writer) (*dockerClient, error) {
+	dc := &dockerClient{
 		host:    host,
 		version: version,
 		wrOut:   os.Stdout,
@@ -79,22 +79,22 @@ func NewClient(host, version string, out io.Writer) (*Client, error) {
 	if out != nil {
 		dc.wrOut = out
 	}
-	e := dc.Open()
+	e := dc.open()
 	return dc, e
 }
 
 //
-func NewEnvClient() (*Client, error) {
-	dc := &Client{
+func newEnvClient() (*dockerClient, error) {
+	dc := &dockerClient{
 		env:   true,
 		wrOut: os.Stdout,
 	}
-	err := dc.Open()
+	err := dc.open()
 	return dc, err
 }
 
 //
-func (dc *Client) Open() error {
+func (dc *dockerClient) open() error {
 	var err error
 	if dc.client == nil {
 		if dc.env {
@@ -107,7 +107,8 @@ func (dc *Client) Open() error {
 }
 
 //
-func (dc *Client) Ping(attempts int, sleep time.Duration) (types.Ping, error) {
+func (dc *dockerClient) ping(attempts int, sleep time.Duration) (
+	types.Ping, error) {
 	var err error
 	for i := 1; ; i++ {
 		if res, err := dc.client.Ping(context.Background()); err == nil {
@@ -125,7 +126,7 @@ func (dc *Client) Ping(attempts int, sleep time.Duration) (types.Ping, error) {
 }
 
 //
-func (dc *Client) Close() error {
+func (dc *dockerClient) close() error {
 	var err error
 	if dc.client != nil {
 		err = dc.client.Close()
@@ -134,21 +135,21 @@ func (dc *Client) Close() error {
 }
 
 //
-func (dc *Client) ListImages(ref string) ([]*Image, error) {
+func (dc *dockerClient) listImages(ref string) ([]*image, error) {
 
 	imgs, err := dc.client.ImageList(
 		context.Background(), types.ImageListOptions{})
-	ret := []*Image{}
+	ret := []*image{}
 
 	if err == nil {
 		fRepo, fPath, fTag := SplitRef(ref)
 		for _, img := range imgs {
-			var i *Image
+			var i *image
 			for _, rt := range img.RepoTags {
 				if match(fRepo, fPath, fTag, rt) {
 					repo, path, tag := SplitRef(rt)
 					if i == nil {
-						i = &Image{
+						i = &image{
 							ID:   img.ID,
 							Repo: repo,
 							Path: path,
@@ -175,7 +176,7 @@ func match(filterRepo, filterPath, filterTag, ref string) bool {
 }
 
 //
-func (dc *Client) PullImage(ref string, allTags bool, auth string,
+func (dc *dockerClient) pullImage(ref string, allTags bool, auth string,
 	verbose bool) error {
 	opts := &types.ImagePullOptions{
 		All:          allTags,
@@ -186,8 +187,9 @@ func (dc *Client) PullImage(ref string, allTags bool, auth string,
 }
 
 //
-func (dc *Client) PushImage(image string, allTags bool, auth string,
+func (dc *dockerClient) pushImage(image string, allTags bool, auth string,
 	verbose bool) error {
+
 	opts := &types.ImagePushOptions{
 		All:          allTags,
 		RegistryAuth: auth,
@@ -197,12 +199,14 @@ func (dc *Client) PushImage(image string, allTags bool, auth string,
 }
 
 //
-func (dc *Client) TagImage(source, target string) error {
+func (dc *dockerClient) tagImage(source, target string) error {
 	return dc.client.ImageTag(context.Background(), source, target)
 }
 
 //
-func (dc *Client) handleLog(rc io.ReadCloser, err error, verbose bool) error {
+func (dc *dockerClient) handleLog(rc io.ReadCloser, err error,
+	verbose bool) error {
+
 	if err != nil {
 		return err
 	}

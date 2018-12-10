@@ -32,9 +32,9 @@ func main() {
 	sync, err := sync.New(conf)
 	failOnError(err)
 
-	defer sync.Dispose()
-
-	failOnError(sync.SyncFromConfig(conf))
+	err = sync.SyncFromConfig(conf)
+	sync.Dispose()
+	failOnError(err)
 }
 
 //

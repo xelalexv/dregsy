@@ -97,23 +97,27 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 		cmd = append(cmd, fmt.Sprintf("--dest-creds=%s", destCreds))
 	}
 
-	var err error
-
 	if len(tags) == 0 {
+		var err error
 		tags, err = listAllTags(srcRef, srcCreds, srcCertDir, srcSkipTLSVerify)
 		if err != nil {
 			return err
 		}
 	}
 
+	errs := false
 	for _, tag := range tags {
 		log.Println()
 		log.Info("syncing tag '%s':", tag)
-		log.Error(
+		errs = errs || log.Error(
 			runSkopeo(r.wrOut, r.wrOut, verbose,
 				append(cmd,
 					fmt.Sprintf("docker://%s:%s", srcRef, tag),
 					fmt.Sprintf("docker://%s:%s", destRef, tag))...))
+	}
+
+	if errs {
+		return fmt.Errorf("errors during sync")
 	}
 
 	return nil
