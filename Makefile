@@ -1,5 +1,6 @@
 REPO=dregsy
-SKOPEO_DIR = ./third_party/skopeo
+SKOPEO_DIR=./third_party/skopeo
+DREGSY_VERSION=$$(git describe --always --tag --dirty)
 
 .PHONY: vendor build docker skopeo
 
@@ -8,11 +9,14 @@ build: vendor
 		-v $$(pwd):/go/src/github.com/xelalexv/$(REPO) \
 		-w /go/src/github.com/xelalexv/$(REPO) \
 		-e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 \
+		-e GOCACHE=/go/src/github.com/xelalexv/$(REPO)/.cache \
 		golang:1.10 go build -v -a -tags netgo -installsuffix netgo \
-		-ldflags '-w' -o dregsy ./cmd/dregsy/
+		-ldflags "-w -X main.DregsyVersion=$(DREGSY_VERSION)" \
+		-o dregsy ./cmd/dregsy/
 
 docker: vendor skopeo
-	docker build -t xelalex/$(REPO) -f Dockerfile .
+	docker build -t xelalex/$(REPO) -f Dockerfile \
+		--build-arg dregsy_version=$(DREGSY_VERSION) .
 	docker image prune --force --filter label=stage=intermediate
 
 vendor:

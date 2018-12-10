@@ -2,11 +2,14 @@
 FROM golang:1.10 as builder
 LABEL stage=intermediate
 
+ARG dregsy_version
+
 COPY . $GOPATH/src/github.com/xelalexv/dregsy/
 WORKDIR $GOPATH/src/github.com/xelalexv/dregsy/
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -a \
-	-tags netgo -installsuffix netgo -ldflags '-w' \
+	-tags netgo -installsuffix netgo \
+	-ldflags "-w -X main.DregsyVersion=${dregsy_version}" \
 	-o /go/bin/dregsy ./cmd/dregsy/
 
 # stage 2: create actual dregsy container

@@ -15,6 +15,13 @@ import (
 	"github.com/xelalexv/dregsy/internal/pkg/sync"
 )
 
+var DregsyVersion string
+
+//
+func version() {
+	log.Info("\ndregsy %s\n", DregsyVersion)
+}
+
 //
 func main() {
 
@@ -22,9 +29,12 @@ func main() {
 	flag.Parse()
 
 	if len(*configFile) == 0 {
+		version()
 		fmt.Println("synopsis: dregsy -config={config file}\n")
 		os.Exit(1)
 	}
+
+	version()
 
 	conf, err := sync.LoadConfig(*configFile)
 	failOnError(err)
