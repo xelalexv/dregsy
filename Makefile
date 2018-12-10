@@ -4,7 +4,7 @@ SKOPEO_DIR = ./third_party/skopeo
 .PHONY: vendor build docker skopeo
 
 build: vendor
-	docker run --rm \
+	docker run --rm --user $(shell id -u):$(shell id -g) \
 		-v $$(pwd):/go/src/github.com/xelalexv/$(REPO) \
 		-w /go/src/github.com/xelalexv/$(REPO) \
 		-e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 \
@@ -16,8 +16,10 @@ docker: vendor skopeo
 	docker image prune --force --filter label=stage=intermediate
 
 vendor:
-	go get github.com/kardianos/govendor
-	govendor sync
+	docker run --rm \
+		-v $$(pwd):/go/src/github.com/xelalexv/$(REPO) \
+		-w /go/src/github.com/xelalexv/$(REPO) \
+		golang:1.10 go get github.com/kardianos/govendor && govendor sync
 
 skopeo:
 	git submodule update --init
