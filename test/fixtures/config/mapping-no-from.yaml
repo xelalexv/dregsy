@@ -1,0 +1,10 @@
+relay: skopeo
+tasks:
+  - name: test
+    interval: 60
+    source:
+      registry: registry.hub.docker.com
+    target:
+      registry: localhost:5000
+    mappings:
+      - from:

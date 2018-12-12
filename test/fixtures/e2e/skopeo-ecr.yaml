@@ -1,0 +1,15 @@
+relay: skopeo
+
+tasks:
+  - name: test-ecr
+    interval: 45
+    verbose: true
+    source:
+      registry: registry.hub.docker.com
+    target:
+      registry: {{ .ECRRegistry }}
+      auth-refresh: 10h
+    mappings:
+      - from: library/busybox
+        to: {{ .ECRRepo }}
+        tags: ['1.29.2', '1.29.3', 'latest']

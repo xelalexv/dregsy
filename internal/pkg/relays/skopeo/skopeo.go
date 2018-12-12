@@ -1,3 +1,19 @@
+/*
+	Copyright 2020 Alexander Vollschwitz <xelalex@gmx.net>
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	  http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package skopeo
 
 import (
@@ -39,7 +55,7 @@ type tagList struct {
 }
 
 //
-func listAllTags(ref, creds, certDir string, skipTLSVerify bool) (
+func ListAllTags(ref, creds, certDir string, skipTLSVerify bool) (
 	[]string, error) {
 
 	cmd := []string{
@@ -65,7 +81,8 @@ func listAllTags(ref, creds, certDir string, skipTLSVerify bool) (
 
 	if err := runSkopeo(bufOut, bufErr, true, cmd...); err != nil {
 		return nil,
-			fmt.Errorf("error listing image tags: %s, %v", bufErr.String(), err)
+			fmt.Errorf("error listing image tags for ref '%s': %s, %v",
+				ref, bufErr.String(), err)
 	}
 
 	list, err := decodeTagList(bufOut.Bytes())
@@ -120,7 +137,7 @@ func decodeTagList(tl []byte) (*tagList, error) {
 }
 
 //
-func decodeJSONAuth(authBase64 string) string {
+func DecodeJSONAuth(authBase64 string) string {
 
 	if authBase64 == "" {
 		return ""

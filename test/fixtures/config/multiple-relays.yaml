@@ -1,0 +1,4 @@
+relay: skopeo
+
+dockerhost: unix:///var/run/docker.sock
+api-version: 1.24

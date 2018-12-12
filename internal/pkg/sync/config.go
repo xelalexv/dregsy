@@ -1,6 +1,18 @@
 /*
- *
- */
+	Copyright 2020 Alexander Vollschwitz <xelalex@gmx.net>
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	  http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
 
 package sync
 
@@ -33,17 +45,17 @@ const minimumAuthRefreshInterval = time.Hour
 /* ----------------------------------------------------------------------------
  *
  */
-type syncConfig struct {
+type SyncConfig struct {
 	Relay      string              `yaml:"relay"`
 	Docker     *docker.RelayConfig `yaml:"docker"`
 	Skopeo     *skopeo.RelayConfig `yaml:"skopeo"`
 	DockerHost string              `yaml:"dockerhost"`  // DEPRECATED
 	APIVersion string              `yaml:"api-version"` // DEPRECATED
-	Tasks      []*task             `yaml:"tasks"`
+	Tasks      []*Task             `yaml:"tasks"`
 }
 
 //
-func (c *syncConfig) validate() error {
+func (c *SyncConfig) validate() error {
 
 	if c.Relay == "" {
 		c.Relay = docker.RelayID
@@ -107,12 +119,12 @@ func (c *syncConfig) validate() error {
 /* ----------------------------------------------------------------------------
  *
  */
-type task struct {
+type Task struct {
 	Name     string     `yaml:"name"`
 	Interval int        `yaml:"interval"`
-	Source   *location  `yaml:"source"`
-	Target   *location  `yaml:"target"`
-	Mappings []*mapping `yaml:"mappings"`
+	Source   *Location  `yaml:"source"`
+	Target   *Location  `yaml:"target"`
+	Mappings []*Mapping `yaml:"mappings"`
 	Verbose  bool       `yaml:"verbose"`
 	//
 	ticker   *time.Ticker
@@ -121,7 +133,7 @@ type task struct {
 }
 
 //
-func (t *task) validate() error {
+func (t *Task) validate() error {
 
 	if len(t.Name) == 0 {
 		return errors.New("a task requires a name")
@@ -158,7 +170,7 @@ func (t *task) validate() error {
 }
 
 //
-func (t *task) startTicking(c chan *task) {
+func (t *Task) startTicking(c chan *Task) {
 
 	i := time.Duration(t.Interval)
 
@@ -179,7 +191,7 @@ func (t *task) startTicking(c chan *task) {
 }
 
 //
-func (t *task) tooSoon() bool {
+func (t *Task) tooSoon() bool {
 	i := time.Duration(t.Interval)
 	if i == 0 {
 		return false
@@ -188,7 +200,7 @@ func (t *task) tooSoon() bool {
 }
 
 //
-func (t *task) stopTicking(c chan *task) {
+func (t *Task) stopTicking(c chan *Task) {
 	if t.ticker != nil {
 		t.ticker.Stop()
 		t.ticker = nil
@@ -196,12 +208,12 @@ func (t *task) stopTicking(c chan *task) {
 }
 
 //
-func (t *task) fail(f bool) {
+func (t *Task) fail(f bool) {
 	t.failed = t.failed || f
 }
 
 //
-func (t *task) mappingRefs(m *mapping) (from, to string) {
+func (t *Task) mappingRefs(m *Mapping) (from, to string) {
 	if m != nil {
 		from = t.Source.Registry + m.From
 		to = t.Target.Registry + m.To
@@ -210,9 +222,9 @@ func (t *task) mappingRefs(m *mapping) (from, to string) {
 }
 
 //
-func (t *task) ensureTargetExists(ref string) error {
+func (t *Task) ensureTargetExists(ref string) error {
 
-	isEcr, region, account := t.Target.getECR()
+	isEcr, region, account := t.Target.GetECR()
 
 	if isEcr {
 
@@ -275,7 +287,7 @@ func normalizePath(p string) string {
 /* ----------------------------------------------------------------------------
  *
  */
-type location struct {
+type Location struct {
 	Registry            string         `yaml:"registry"`
 	Auth                string         `yaml:"auth"`
 	SkipTLSVerify       bool           `yaml:"skip-tls-verify"`
@@ -285,7 +297,7 @@ type location struct {
 }
 
 //
-func (l *location) validate() error {
+func (l *Location) validate() error {
 
 	if l == nil {
 		return errors.New("location is nil")
@@ -302,7 +314,7 @@ func (l *location) validate() error {
 		if *l.AuthRefresh == 0 {
 			l.AuthRefresh = nil
 
-		} else if !l.isECR() {
+		} else if !l.IsECR() {
 			return fmt.Errorf(
 				"'%s' wants authentication refresh, but is not an ECR registry",
 				l.Registry)
@@ -319,13 +331,13 @@ func (l *location) validate() error {
 }
 
 //
-func (l *location) isECR() bool {
-	ecr, _, _ := l.getECR()
+func (l *Location) IsECR() bool {
+	ecr, _, _ := l.GetECR()
 	return ecr
 }
 
 //
-func (l *location) getECR() (ecr bool, region, account string) {
+func (l *Location) GetECR() (ecr bool, region, account string) {
 	url := strings.Split(l.Registry, ".")
 	ecr = (len(url) == 6 || len(url) == 7) && url[1] == "dkr" && url[2] == "ecr" &&
 		url[4] == "amazonaws" && url[5] == "com" && (len(url) == 6 || url[6] == "cn")
@@ -340,7 +352,8 @@ func (l *location) getECR() (ecr bool, region, account string) {
 }
 
 //
-func (l *location) refreshAuth() error {
+func (l *Location) RefreshAuth() error {
+
 	if l.isGCR() {
 		return l.refreshAuthGCP()
 	}
@@ -349,7 +362,7 @@ func (l *location) refreshAuth() error {
 		return nil
 	}
 
-	_, region, account := l.getECR()
+	_, region, account := l.GetECR()
 	log.Info("refreshing credentials for '%s'", l.Registry)
 
 	sess, err := session.NewSession()
@@ -398,7 +411,7 @@ func (l *location) refreshAuth() error {
 }
 
 //
-func (l *location) refreshAuthGCP() error {
+func (l *Location) refreshAuthGCP() error {
 	if l.gcrTokenExpiry.Sub(time.Now()) > 0 {
 		return nil
 	}
@@ -434,14 +447,14 @@ func (l *location) refreshAuthGCP() error {
 /* ----------------------------------------------------------------------------
  *
  */
-type mapping struct {
+type Mapping struct {
 	From string   `yaml:"from"`
 	To   string   `yaml:"to"`
 	Tags []string `yaml:"tags"`
 }
 
 //
-func (m *mapping) validate() error {
+func (m *Mapping) validate() error {
 
 	if m == nil {
 		return errors.New("mapping is nil")
@@ -461,7 +474,7 @@ func (m *mapping) validate() error {
 /* ----------------------------------------------------------------------------
  * load config from YAML file
  */
-func LoadConfig(file string) (*syncConfig, error) {
+func LoadConfig(file string) (*SyncConfig, error) {
 
 	data, err := ioutil.ReadFile(file)
 
@@ -469,12 +482,15 @@ func LoadConfig(file string) (*syncConfig, error) {
 		return nil, fmt.Errorf("error loading config file '%s': %v", file, err)
 	}
 
-	config := &syncConfig{}
-	err = yaml.Unmarshal(data, config)
+	config := &SyncConfig{}
 
-	if err != nil {
+	if err = yaml.Unmarshal(data, config); err != nil {
 		return nil, fmt.Errorf("error parsing config file '%s': %v", file, err)
 	}
 
-	return config, config.validate()
+	if err = config.validate(); err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
