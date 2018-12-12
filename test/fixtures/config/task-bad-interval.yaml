@@ -1,0 +1,4 @@
+relay: skopeo
+tasks:
+  - name: test
+    interval: -10

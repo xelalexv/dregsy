@@ -1,0 +1,16 @@
+relay: skopeo
+
+tasks:
+  - name: test-skopeo
+    interval: 30
+    verbose: true
+    source:
+      registry: registry.hub.docker.com
+    target:
+      registry: 172.17.0.1:5000
+      auth: eyJ1c2VybmFtZSI6ICJhbm9ueW1vdXMiLCAicGFzc3dvcmQiOiAiYW5vbnltb3VzIn0K
+      skip-tls-verify: true
+    mappings:
+      - from: library/busybox
+        to: skopeo/library/busybox
+        tags: ['1.29.2', '1.29.3', 'latest']

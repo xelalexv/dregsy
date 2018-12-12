@@ -36,35 +36,62 @@ ERR="\e[01;31m"
 #
 function synopsis {
 
-	echo "hello"
+    files=()
 
-    shopt -s extglob
-    local file
-    file="$(echo "${MAKEFILE_LIST##+([[:space:]])}" | cut -d ' ' -f 1)"
+    for file in ${MAKEFILE_LIST}; do
+        if [[ "$(basename "${file}")" == "Makefile" ]]; then
+            files+=( "../${file}" )
+        fi
+    done
 
     echo -e "\n${BLD}TARGETS${NRM}"
-    print_formatted_help "$(
-        awk '{FS=":"}
-            /^[-a-zA-Z0-9_]+:[-a-zA-Z0-9_ ]*$/{f=1; printf "\n${ITL}${BLD}%s${NRM}\n", $1; next}
-            /^[^#].*$/{f=0} f' "${file}" \
-         | tr -d '#')"
+    print_sorted_help "$(cat "${files[@]}" \
+        | awk '{FS=":"}
+            /^[a-zA-Z0-9][-a-zA-Z0-9_\.]+:{1,2}[-a-zA-Z0-9_\. ]*$/{f=1; printf "\n${ITL}${BLD}%s${NRM}\n", $1; next}
+            /^[^#].*$/{f=0} f' \
+        | tr -d '#')"
 
-    echo -e "\n\n${BLD}NOTES${NRM}\n"
-    print_formatted_help "$(
-        awk '/^##$/{f=1; printf "-%s", $0; next} /^[^#].*$/{f=0} f' "${file}" \
-         | tr -d '#')"
+    echo -e "\n${BLD}NOTES${NRM}\n"
+
+    # .makerc settings
+    print_formatted_help "$(cat "${files[@]}" \
+        | awk '/^## makerc$/{f=1; next} /^[^#].*$/{f=0} /^$/{f=0} f' \
+        | tr -d '#')"
+    echo
+
+    # env settings
+    print_formatted_help "$(cat "${files[@]}" \
+        | awk '/^## env$/{f=1; next} /^[^#].*$/{f=0} /^$/{f=0} f' \
+        | tr -d '#')"
+
+    # other notes
+    print_formatted_help "$(cat "${files[@]}" \
+        | awk '/^##$/{f=1; printf "-%s", $0; next} /^[^#].*$/{f=0} /^$/{f=0} f' \
+        | tr -d '#')"
     echo
 }
 
 #
-# $1	help text
+# $1    help text
+#
+function print_sorted_help {
+    print_formatted_help "$1" \
+        | awk 'BEGIN{print "\0"}
+            /^$/{printf "\0"} {print $0}' \
+        | sort -z \
+        | tr -d '\000' \
+        | tail -n+2
+}
+
+#
+# $1    help text
 #
 function print_formatted_help {
     echo -e "$(apply_shell_expansion "$1")" | uniq
 }
 
 #
-# $1	string to expand
+# $1    string to expand
 #
 function apply_shell_expansion {
     declare data="$1"
@@ -77,4 +104,5 @@ function apply_shell_expansion {
 #
 #
 
+cd "$(dirname "$0")" || exit 1
 "$@"

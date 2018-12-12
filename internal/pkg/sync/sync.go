@@ -1,6 +1,18 @@
 /*
- *
- */
+	Copyright 2020 Alexander Vollschwitz <xelalex@gmx.net>
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	  http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
 
 package sync
 
@@ -20,21 +32,23 @@ import (
 //
 type Relay interface {
 	Prepare() error
-	Dispose()
+	Dispose() error
 	Sync(srcRef, srcAuth string, srcSkiptTLSVerify bool,
 		trgtRef, trgtAuth string, trgtSkiptTLSVerify bool,
 		tags []string, verbose bool) error
 }
 
 //
-type sync struct {
-	relay Relay
+type Sync struct {
+	relay    Relay
+	shutdown chan bool
+	ticks    chan bool
 }
 
 //
-func New(conf *syncConfig) (*sync, error) {
+func New(conf *SyncConfig) (*Sync, error) {
 
-	sync := &sync{}
+	sync := &Sync{}
 
 	var out io.Writer = sync
 	if log.ToTerminal {
@@ -61,16 +75,38 @@ func New(conf *syncConfig) (*sync, error) {
 	}
 
 	sync.relay = relay
+	sync.shutdown = make(chan bool)
+	sync.ticks = make(chan bool, 1)
+
 	return sync, nil
 }
 
 //
-func (s *sync) Dispose() {
+func (s *Sync) Shutdown() {
+	s.shutdown <- true
+	s.WaitForTick()
+}
+
+//
+func (s *Sync) tick() {
+	select {
+	case s.ticks <- true:
+	default:
+	}
+}
+
+//
+func (s *Sync) WaitForTick() {
+	<-s.ticks
+}
+
+//
+func (s *Sync) Dispose() {
 	s.relay.Dispose()
 }
 
 //
-func (s *sync) SyncFromConfig(conf *syncConfig) error {
+func (s *Sync) SyncFromConfig(conf *SyncConfig) error {
 
 	if err := s.relay.Prepare(); err != nil {
 		return err
@@ -85,7 +121,7 @@ func (s *sync) SyncFromConfig(conf *syncConfig) error {
 	}
 
 	// periodic tasks
-	c := make(chan *task)
+	c := make(chan *Task)
 	ticking := false
 
 	for _, t := range conf.Tasks {
@@ -102,11 +138,16 @@ func (s *sync) SyncFromConfig(conf *syncConfig) error {
 		log.Info("waiting for next sync task...")
 		log.Println()
 		select {
-		case t := <-c:
+		case t := <-c: // actual task
 			s.syncTask(t)
-		case sig := <-sigs:
+			s.tick() // send a tick
+		case sig := <-sigs: // interrupt signal
 			log.Info("\nreceived '%v' signal, stopping ...\n", sig)
 			ticking = false
+		case <-s.shutdown: // shutdown flagged
+			log.Info("\nshutdown flagged, stopping ...\n")
+			ticking = false
+			s.tick() // send a final tick to release shutdown client
 		}
 	}
 
@@ -126,7 +167,7 @@ func (s *sync) SyncFromConfig(conf *syncConfig) error {
 }
 
 //
-func (s *sync) syncTask(t *task) {
+func (s *Sync) syncTask(t *Task) {
 
 	if t.tooSoon() {
 		log.Info("task '%s' fired too soon, skipping", t.Name)
@@ -140,8 +181,8 @@ func (s *sync) syncTask(t *task) {
 	for _, m := range t.Mappings {
 		log.Info("mapping '%s' to '%s'", m.From, m.To)
 		src, trgt := t.mappingRefs(m)
-		t.fail(log.Error(t.Source.refreshAuth()))
-		t.fail(log.Error(t.Target.refreshAuth()))
+		t.fail(log.Error(t.Source.RefreshAuth()))
+		t.fail(log.Error(t.Target.RefreshAuth()))
 		t.fail(log.Error(t.ensureTargetExists(trgt)))
 		t.fail(log.Error(s.relay.Sync(
 			src, t.Source.Auth, t.Source.SkipTLSVerify,
@@ -154,7 +195,7 @@ func (s *sync) syncTask(t *task) {
 }
 
 //
-func (s *sync) Write(p []byte) (n int, err error) {
+func (s *Sync) Write(p []byte) (n int, err error) {
 	fmt.Print(string(p))
 	return len(p), nil
 }

@@ -1,0 +1,5 @@
+relay: skopeo
+tasks:
+  - name: test
+    interval: 60
+    source:

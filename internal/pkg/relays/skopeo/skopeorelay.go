@@ -1,3 +1,19 @@
+/*
+	Copyright 2020 Alexander Vollschwitz <xelalex@gmx.net>
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	  http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package skopeo
 
 import (
@@ -55,7 +71,8 @@ func (r *SkopeoRelay) Prepare() error {
 }
 
 //
-func (r *SkopeoRelay) Dispose() {
+func (r *SkopeoRelay) Dispose() error {
+	return nil
 }
 
 //
@@ -63,8 +80,8 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	destRef, destAuth string, destSkipTLSVerify bool,
 	tags []string, verbose bool) error {
 
-	srcCreds := decodeJSONAuth(srcAuth)
-	destCreds := decodeJSONAuth(destAuth)
+	srcCreds := DecodeJSONAuth(srcAuth)
+	destCreds := DecodeJSONAuth(destAuth)
 
 	cmd := []string{
 		"--insecure-policy",
@@ -99,7 +116,7 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 
 	if len(tags) == 0 {
 		var err error
-		tags, err = listAllTags(srcRef, srcCreds, srcCertDir, srcSkipTLSVerify)
+		tags, err = ListAllTags(srcRef, srcCreds, srcCertDir, srcSkipTLSVerify)
 		if err != nil {
 			return err
 		}

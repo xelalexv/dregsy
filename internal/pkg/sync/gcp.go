@@ -22,7 +22,7 @@ type Response struct {
 }
 
 //
-func (l *location) isGCR() bool {
+func (l *Location) isGCR() bool {
 	url := strings.Split(l.Registry, ".")
 	gcr := url[len(url)-2] == "gcr" && url[len(url)-1] == "io"
 	return gcr
