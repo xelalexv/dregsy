@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"regexp"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -26,6 +27,9 @@ type image struct {
 	Path string
 	Tags []string
 }
+
+// replace "docker.io/usr/appname:tag" with "usr/apname:tag" when searching locally
+var re = regexp.MustCompile(`^docker.io/`)
 
 //
 func (s *image) ref() string {
@@ -142,6 +146,7 @@ func (dc *dockerClient) listImages(ref string) ([]*image, error) {
 	ret := []*image{}
 
 	if err == nil {
+		ref = re.ReplaceAllString(ref, "")
 		fRepo, fPath, fTag := SplitRef(ref)
 		for _, img := range imgs {
 			var i *image
