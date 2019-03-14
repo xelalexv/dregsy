@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -146,7 +147,11 @@ func (dc *dockerClient) listImages(ref string) ([]*image, error) {
 		for _, img := range imgs {
 			var i *image
 			for _, rt := range img.RepoTags {
-				if match(fRepo, fPath, fTag, rt) {
+				matched, err := match(fRepo, fPath, fTag, rt)
+				if err != nil {
+					return ret, err
+				}
+				if matched {
 					repo, path, tag := SplitRef(rt)
 					if i == nil {
 						i = &image{
@@ -168,11 +173,24 @@ func (dc *dockerClient) listImages(ref string) ([]*image, error) {
 }
 
 //
-func match(filterRepo, filterPath, filterTag, ref string) bool {
-	repo, path, tag := SplitRef(ref)
+func match(filterRepo, filterPath, filterTag, ref string) (bool, error) {
+
+	filterCanon, err := reference.ParseAnyReference(
+		fmt.Sprintf("%s/%s", filterRepo, filterPath))
+	if err != nil {
+		return false, fmt.Errorf("malformed ref in filter: %v", err)
+	}
+	filterRepo, filterPath, _ = SplitRef(filterCanon.String())
+
+	refCanon, err := reference.ParseAnyReference(ref)
+	if err != nil {
+		return false, fmt.Errorf("malformed image ref: %v", err)
+	}
+
+	repo, path, tag := SplitRef(refCanon.String())
 	return (filterRepo == "" || filterRepo == repo) &&
 		(filterPath == "" || filterPath == path) &&
-		(filterTag == "" || filterTag == tag)
+		(filterTag == "" || filterTag == tag), nil
 }
 
 //
