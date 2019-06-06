@@ -23,7 +23,7 @@ vendor:
 	docker run --rm \
 		-v $$(pwd):/go/src/github.com/xelalexv/$(REPO) \
 		-w /go/src/github.com/xelalexv/$(REPO) \
-		golang:1.10 go get github.com/kardianos/govendor && govendor sync
+		golang:1.10 bash -c "go get github.com/kardianos/govendor && govendor sync"
 
 skopeo:
 	git submodule update --init
