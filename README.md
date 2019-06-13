@@ -164,31 +164,34 @@ docker run --privileged --rm -v {path to config file}:/config.yaml -v /var/run/d
 
 ### Running On *Kubernetes*
 
-When you run a *Docker* registry inside your *Kubernetes* cluster as an image cache, *dregsy* can come in handy as an automated updater for that cache. The pod in the definition below uses the `skopeo` relay. In addition, you will most likely want to mount client certs & keys, and CA certs from *Kubernetes* secrets into the pod for TLS validation to work. (The CA bundle from the official `golang` image is already included in the *dregsy* image.)
+When you run a *Docker* registry inside your *Kubernetes* cluster as an image cache, *dregsy* can come in handy as an automated updater for that cache. The example config below uses the `skopeo` relay:
 
 ```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: dregsy-config
-  namespace: kube-system
-data:
-  config.yaml: |-
-    relay: skopeo
-    tasks:
-      - name: task1
-        interval: 60
-        source:
-          registry: registry.acme.com
-          auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogInNlY3JldCJ9Cg==
-        target:
-          registry: registry.my-cluster
-          auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogImFsc29zZWNyZXQifQo=
-        mappings:
-          - from: test/image
-            to: archive/test/image
-          - from: test/another-image
----
+relay: skopeo
+tasks:
+  - name: task1
+    interval: 60
+    source:
+      registry: registry.acme.com
+      auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogInNlY3JldCJ9Cg==
+    target:
+      registry: registry.my-cluster
+      auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogImFsc29zZWNyZXQifQo=
+    mappings:
+      - from: test/image
+        to: archive/test/image
+      - from: test/another-image
+```
+
+To keep your registry auth tokens in the config file secure, we are creating a Kubernetes _Secret_ instead of a _ConfigMap_: 
+
+```sh
+kubectl create secret generic dregsy-config --from-file=./config.yaml
+```
+
+In addition, you will most likely want to mount client certs & keys, and CA certs from *Kubernetes* secrets into the pod for TLS validation to work. (The CA bundle from the official `golang` image is already included in the *dregsy* image.)
+
+```yaml
 apiVersion: apps/v1beta1
 kind: StatefulSet
 metadata:
@@ -217,13 +220,11 @@ spec:
         volumeMounts:
         - name: dregsy-config
           mountPath: /config
+          readOnly: true
       volumes:
       - name: dregsy-config
-        configMap:
-          name: dregsy-config
-          items:
-          - key: config.yaml
-            path: config.yaml
+        secret:
+          secretName: dregsy-config
 ```
 
 
