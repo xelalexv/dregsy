@@ -324,8 +324,8 @@ func (l *location) isECR() bool {
 //
 func (l *location) getECR() (ecr bool, region, account string) {
 	url := strings.Split(l.Registry, ".")
-	ecr = len(url) == 6 && url[1] == "dkr" && url[2] == "ecr" &&
-		url[4] == "amazonaws" && url[5] == "com"
+	ecr = (len(url) == 6 || len(url) == 7) && url[1] == "dkr" && url[2] == "ecr" &&
+		url[4] == "amazonaws" && url[5] == "com" && (len(url) == 6 || url[6] == "cn")
 	if ecr {
 		region = url[3]
 		account = url[0]
