@@ -1,34 +1,114 @@
+#
+# Copyright 2020 Alexander Vollschwitz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+.DEFAULT_GOAL := help
+SHELL = /bin/bash
+
 REPO=dregsy
-SKOPEO_DIR=./third_party/skopeo
 DREGSY_VERSION=$$(git describe --always --tag --dirty)
 
-.PHONY: vendor build docker skopeo
+BUILD_OUTPUT=build
+BINARIES=$(BUILD_OUTPUT)/bin
+ISOLATED_PKG=$(BUILD_OUTPUT)/pkg
+ISOLATED_CACHE=$(BUILD_OUTPUT)/cache
 
-build: vendor
+GO_IMAGE=golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db9629a724af8a332fe54e3f7b3
+
+##
+# You can set the following environment variables when calling make:
+#
+#	${ITL}VERBOSE=y${NRM}	get detailed output
+#
+#	${ITL}ISOLATED=y${NRM}	when using this with a build target, the build will be isolated
+#			in the sense that local caches such as ${DIM}\${GOPATH}/pkg${NRM} and ${DIM}~/.cache${NRM}
+#			will not be mounted into the build container. Instead, according
+#			folders underneath ${DIM}./build${NRM} are used. These folders are removed when
+#			running ${DIM}make clean${NRM}. That way you can force a full build, where all
+#			dependencies are retrieved & built inside the container.
+#
+
+VERBOSE ?=
+ifeq ($(VERBOSE),y)
+    $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
+    $(warning ***** $(shell date))
+    MAKEFLAGS += --trace
+else
+    MAKEFLAGS += -s
+endif
+
+ifeq ($(MAKECMDGOALS),release)
+	ISOLATED=y
+endif
+
+ISOLATED ?=
+ifeq ($(ISOLATED),y)
+    CACHE_VOLS=-v $$(pwd)/$(ISOLATED_PKG):/go/pkg -v $$(pwd)/$(ISOLATED_CACHE):/.cache
+else
+    CACHE_VOLS=-v $(GOPATH)/pkg:/go/pkg -v /home/$(USER)/.cache:/.cache
+endif
+
+export
+
+#
+#
+
+.PHONY: help
+help:
+#	show this help
+#
+	$(call utils, synopsis) | more
+
+
+.PHONY: release
+release: clean dregsy image
+#	clean, do an isolated build, and create container image
+#
+
+
+.PHONY: dregsy
+dregsy:
+#	build the ${ITL}dregsy${NRM} binary
+#
+	mkdir -p $(BINARIES) $(ISOLATED_PKG) $(ISOLATED_CACHE)
 	docker run --rm --user $(shell id -u):$(shell id -g) \
-		-v $$(pwd):/go/src/github.com/xelalexv/$(REPO) \
-		-w /go/src/github.com/xelalexv/$(REPO) \
+        -v $(shell pwd)/$(BINARIES):/go/bin $(CACHE_VOLS) \
+		-v $(shell pwd):/go/src/$(REPO) -w /go/src/$(REPO) \
 		-e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 \
-		-e GOCACHE=/go/src/github.com/xelalexv/$(REPO)/.cache \
-		golang:1.10 go build -v -a -tags netgo -installsuffix netgo \
+		$(GO_IMAGE) go build -v -a -tags netgo -installsuffix netgo \
 		-ldflags "-w -X main.DregsyVersion=$(DREGSY_VERSION)" \
-		-o dregsy ./cmd/dregsy/
+		-o $(BINARIES)/dregsy ./cmd/dregsy/
 
-docker: vendor skopeo
+
+.PHONY: image
+image:
+#	build the ${ITL}dregsy${NRM} container image; assumes binary was built
+#
 	docker build -t xelalex/$(REPO) -f Dockerfile \
-		--build-arg dregsy_version=$(DREGSY_VERSION) .
-	docker image prune --force --filter label=stage=intermediate
+		--build-arg binaries=$(BINARIES) .
 
-vendor:
-	docker run --rm \
-		-v $$(pwd):/go/src/github.com/xelalexv/$(REPO) \
-		-w /go/src/github.com/xelalexv/$(REPO) \
-		golang:1.10 bash -c "go get github.com/kardianos/govendor && govendor sync"
 
-skopeo:
-	git submodule update --init
-	# issue 7: patch Skopeo's build Dockerfile to use more recent Ubuntu
-	sed -i 's/FROM ubuntu:17.10/FROM ubuntu:18.10/' $(SKOPEO_DIR)/Dockerfile.build
-	$(MAKE) -C $(SKOPEO_DIR) binary-static DISABLE_CGO=1
-	# issue 7: restore original Dockerfile
-	cd $(SKOPEO_DIR); git checkout Dockerfile.build
+.PHONY: clean
+clean:
+#	remove all build artifacts, including isolation caches
+#
+	[[ ! -d $(BUILD_OUTPUT) ]] || chmod -R u+w $(BUILD_OUTPUT)
+	rm -rf $(BUILD_OUTPUT)
+
+
+#
+# helper functions
+#
+utils = ./hack/devenvutil $(1)
