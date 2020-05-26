@@ -183,7 +183,7 @@ tasks:
       - from: test/another-image
 ```
 
-To keep your registry auth tokens in the config file secure, we are creating a Kubernetes _Secret_ instead of a _ConfigMap_: 
+To keep your registry auth tokens in the config file secure, we are creating a Kubernetes _Secret_ instead of a _ConfigMap_:
 
 ```sh
 kubectl create secret generic dregsy-config --from-file=./config.yaml
@@ -230,4 +230,4 @@ spec:
 
 ## Building
 
-To build the *dregsy* binary, run `make build`. For building the *dregsy* *Docker* container, run `make docker`. This will also build the `skopeo` binary (the *Skopeo* project is included as a git submodule, and will be pulled in automatically). In either case, when you build for the first time, getting vendored dependencies may take quite a while.
+The `Makefile` has targets for building the binary and *Docker* image, and other stuff. Just run `make` to get a list. Note that for consistency, building is done inside a *Golang* build container, so you will need *Docker* to build. *dregsy*'s *Docker* image is based on *Alpine*, and installs *Skopeo* via `apk` during the image build.

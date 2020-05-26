@@ -1,25 +1,27 @@
-# stage 1: build
-FROM golang:1.10 as builder
-LABEL stage=intermediate
+#
+# Copyright 2020 Alexander Vollschwitz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
-ARG dregsy_version
+FROM alpine:3.11.6@sha256:39eda93d15866957feaee28f8fc5adb545276a64147445c64992ef69804dbf01
 
-COPY . $GOPATH/src/github.com/xelalexv/dregsy/
-WORKDIR $GOPATH/src/github.com/xelalexv/dregsy/
+LABEL maintainer "vollschwitz@gmx.net"
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -a \
-	-tags netgo -installsuffix netgo \
-	-ldflags "-w -X main.DregsyVersion=${dregsy_version}" \
-	-o /go/bin/dregsy ./cmd/dregsy/
+ARG binaries
 
-# stage 2: create actual dregsy container
-FROM scratch
+RUN apk --update add --no-cache skopeo=0.1.40-r1 ca-certificates
 
-# also get CA certificates
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY ${binaries}/dregsy /usr/local/bin
 
-COPY ./third_party/skopeo/skopeo /
-COPY --from=builder /go/bin/dregsy /
-
-ENV PATH=/
-CMD ["/dregsy", "-config=config.yaml"]
+CMD ["dregsy", "-config=config.yaml"]

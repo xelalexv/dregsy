@@ -1,4 +1,3 @@
+build
+scratchpad
 *.sublime*
-dregsy
-vendor/*/
-.cache
