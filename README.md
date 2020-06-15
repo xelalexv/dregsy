@@ -212,7 +212,7 @@ spec:
       containers:
       - name: dregsy
         image: xelalex/dregsy
-        command: ['/dregsy', '-config=/config/config.yaml']
+        command: ['dregsy', '-config=/config/config.yaml']
         resources:
           requests:
             cpu: 10m
