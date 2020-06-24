@@ -33,10 +33,9 @@ type creds struct {
 }
 
 //
-type manifest struct {
-	Name     string   `json:"Name"`
-	Digest   string   `json:"Digest"`
-	RepoTags []string `json:"RepoTags"`
+type tagList struct {
+	Repository string   `json:"Repository"`
+	Tags       []string `json:"Tags"`
 }
 
 //
@@ -44,7 +43,7 @@ func listAllTags(ref, creds, certDir string, skipTLSVerify bool) (
 	[]string, error) {
 
 	cmd := []string{
-		"inspect",
+		"list-tags",
 	}
 
 	if skipTLSVerify {
@@ -69,11 +68,11 @@ func listAllTags(ref, creds, certDir string, skipTLSVerify bool) (
 			fmt.Errorf("error listing image tags: %s, %v", bufErr.String(), err)
 	}
 
-	man, err := decodeManifest(bufOut.Bytes())
+	list, err := decodeTagList(bufOut.Bytes())
 	if err != nil {
 		return nil, err
 	}
-	return man.RepoTags, nil
+	return list.Tags, nil
 }
 
 //
@@ -112,9 +111,9 @@ func runSkopeo(outWr, errWr io.Writer, verbose bool, args ...string) error {
 }
 
 //
-func decodeManifest(m []byte) (*manifest, error) {
-	var ret manifest
-	if err := json.Unmarshal(m, &ret); err != nil {
+func decodeTagList(tl []byte) (*tagList, error) {
+	var ret tagList
+	if err := json.Unmarshal(tl, &ret); err != nil {
 		return nil, err
 	}
 	return &ret, nil
