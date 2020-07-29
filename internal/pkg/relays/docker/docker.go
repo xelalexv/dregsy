@@ -175,16 +175,16 @@ func (dc *dockerClient) listImages(ref string) ([]*image, error) {
 //
 func match(filterRepo, filterPath, filterTag, ref string) (bool, error) {
 
-	filterCanon, err := reference.ParseAnyReference(
-		fmt.Sprintf("%s/%s", filterRepo, filterPath))
+	filter := fmt.Sprintf("%s/%s", filterRepo, filterPath)
+	filterCanon, err := reference.ParseAnyReference(filter)
 	if err != nil {
-		return false, fmt.Errorf("malformed ref in filter: %v", err)
+		return false, fmt.Errorf("malformed ref in filter '%s', %v", filter, err)
 	}
 	filterRepo, filterPath, _ = SplitRef(filterCanon.String())
 
 	refCanon, err := reference.ParseAnyReference(ref)
 	if err != nil {
-		return false, fmt.Errorf("malformed image ref: %v", err)
+		return false, fmt.Errorf("malformed image ref '%s': %v", ref, err)
 	}
 
 	repo, path, tag := SplitRef(refCanon.String())
