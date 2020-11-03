@@ -11,8 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -395,9 +396,10 @@ func (l *location) refreshAuth() error {
  *
  */
 type mapping struct {
-	From string   `yaml:"from"`
-	To   string   `yaml:"to"`
-	Tags []string `yaml:"tags"`
+	From            string   `yaml:"from"`
+	To              string   `yaml:"to"`
+	Tags            []string `yaml:"tags"`
+	SemverContraint string   `yaml:"semver"`
 }
 
 //

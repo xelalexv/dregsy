@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
-
 	"github.com/xelalexv/dregsy/internal/pkg/log"
 )
 
@@ -73,7 +72,7 @@ func (r *DockerRelay) Dispose() {
 //
 func (r *DockerRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	trgtRef, trgtAuth string, trgtSkipTLSVerify bool,
-	tags []string, verbose bool) error {
+	tags []string, semverConstraint string, verbose bool) error {
 
 	log.Info("pulling source image '%s'", srcRef)
 	var err error

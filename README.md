@@ -66,6 +66,15 @@ tasks:
       - from: test/image
         to: archive/test/image
         tags: ['0.1.0', '0.1.1']
+      # Alternatively you can filter the images by a semver constraint.
+      # https://github.com/Masterminds/semver#basic-comparisons
+      # Note that this will also filter tags like latest.
+      # If you need to also sync tags that are not semver compatible you
+      # can set up a second task or mapping with a tags list.
+      # This is only supported on the scopeo relay.
+      - from: test/semver-filtered
+        to: archive/test/semver-filtered
+        semver: '>= 1.17.0 || >= 1.17.0-alpine'
       - from: test/another-image
 ```
 

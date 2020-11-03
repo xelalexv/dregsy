@@ -7,6 +7,7 @@ import (
 
 	"github.com/xelalexv/dregsy/internal/pkg/log"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
+	"github.com/xelalexv/dregsy/internal/pkg/semver"
 )
 
 const RelayID = "skopeo"
@@ -61,7 +62,7 @@ func (r *SkopeoRelay) Dispose() {
 //
 func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	destRef, destAuth string, destSkipTLSVerify bool,
-	tags []string, verbose bool) error {
+	tags []string, semverConstraint string, verbose bool) error {
 
 	srcCreds := decodeJSONAuth(srcAuth)
 	destCreds := decodeJSONAuth(destAuth)
@@ -100,6 +101,7 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	if len(tags) == 0 {
 		var err error
 		tags, err = listAllTags(srcRef, srcCreds, srcCertDir, srcSkipTLSVerify)
+
 		if err != nil {
 			return err
 		}
@@ -108,7 +110,14 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	errs := false
 	for _, tag := range tags {
 		log.Println()
+
+		if !semver.MatchesSemverConstraint(semverConstraint, tag) {
+			log.Info("skipping tag '%s' because semver constraint does not match", tag)
+			continue
+		}
+
 		log.Info("syncing tag '%s':", tag)
+
 		errs = errs || log.Error(
 			runSkopeo(r.wrOut, r.wrOut, verbose,
 				append(cmd,

@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/Bowery/prompt v0.0.0-20190916142128-fa8279994f75 // indirect
+	github.com/Masterminds/semver/v3 v3.1.0
 	github.com/aws/aws-sdk-go v1.31.4
 	github.com/dchest/safefile v0.0.0-20151022103144-855e8d98f185 // indirect
 	github.com/docker/distribution v2.7.1+incompatible
