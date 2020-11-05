@@ -69,6 +69,7 @@ func listAllTags(ref, creds, certDir string, skipTLSVerify bool) (
 	}
 
 	list, err := decodeTagList(bufOut.Bytes())
+
 	if err != nil {
 		return nil, err
 	}

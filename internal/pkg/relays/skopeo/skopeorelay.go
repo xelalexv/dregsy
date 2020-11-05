@@ -62,7 +62,7 @@ func (r *SkopeoRelay) Dispose() {
 //
 func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	destRef, destAuth string, destSkipTLSVerify bool,
-	tags []string, semverConstraint string, verbose bool) error {
+	tags []string, semverConstraint string, semverSuffixes []string, verbose bool) error {
 
 	srcCreds := decodeJSONAuth(srcAuth)
 	destCreds := decodeJSONAuth(destAuth)
@@ -111,7 +111,7 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	for _, tag := range tags {
 		log.Println()
 
-		if !semver.MatchesSemverConstraint(semverConstraint, tag) {
+		if !semver.MatchesSemverConstraint(semverConstraint, semverSuffixes, tag) {
 			log.Info("skipping tag '%s' because semver constraint does not match", tag)
 			continue
 		}

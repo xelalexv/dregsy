@@ -400,6 +400,7 @@ type mapping struct {
 	To              string   `yaml:"to"`
 	Tags            []string `yaml:"tags"`
 	SemverContraint string   `yaml:"semver"`
+	SemverSuffixes  []string `yaml:"semverSuffixes"`
 }
 
 //

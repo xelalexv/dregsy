@@ -74,7 +74,8 @@ tasks:
       # This is only supported on the scopeo relay.
       - from: test/semver-filtered
         to: archive/test/semver-filtered
-        semver: '>= 1.17.0 || >= 1.17.0-alpine'
+        semver: '>= 1.17.0'
+        semverSuffixes: ['-alpine']
       - from: test/another-image
 ```
 

@@ -23,7 +23,7 @@ type Relay interface {
 	Dispose()
 	Sync(srcRef, srcAuth string, srcSkiptTLSVerify bool,
 		trgtRef, trgtAuth string, trgtSkiptTLSVerify bool,
-		tags []string, semverConstraint string, verbose bool) error
+		tags []string, semverConstraint string, semverSuffixes []string, verbose bool) error
 }
 
 //
@@ -146,7 +146,7 @@ func (s *sync) syncTask(t *task) {
 		t.fail(log.Error(s.relay.Sync(
 			src, t.Source.Auth, t.Source.SkipTLSVerify,
 			trgt, t.Target.Auth, t.Target.SkipTLSVerify,
-			m.Tags, m.SemverContraint, t.Verbose)))
+			m.Tags, m.SemverContraint, m.SemverSuffixes, t.Verbose)))
 	}
 
 	t.lastTick = time.Now()
