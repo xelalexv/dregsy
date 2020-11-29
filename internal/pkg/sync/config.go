@@ -8,11 +8,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -279,6 +281,7 @@ type location struct {
 	SkipTLSVerify bool           `yaml:"skip-tls-verify"`
 	AuthRefresh   *time.Duration `yaml:"auth-refresh"`
 	lastRefresh   time.Time
+	expiry        time.Time
 }
 
 //
@@ -338,6 +341,9 @@ func (l *location) getECR() (ecr bool, region, account string) {
 
 //
 func (l *location) refreshAuth() error {
+	if l.isGCR() {
+		return l.refreshAuthGCP()
+	}
 
 	if l.AuthRefresh == nil || time.Since(l.lastRefresh) < *l.AuthRefresh {
 		return nil
@@ -389,6 +395,41 @@ func (l *location) refreshAuth() error {
 	}
 
 	return fmt.Errorf("no authorization data for")
+}
+
+//
+func (l *location) refreshAuthGCP() error {
+	if l.expiry.Sub(l.lastRefresh) > 0 {
+		return nil
+	}
+
+	var runner func() (string, time.Time, error)
+
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
+		runner = tokenFromCreds
+	} else if isGCE() {
+		runner = tokenFromMetadata
+	} else {
+		return fmt.Errorf("No GOOGLE_APPLICATION_CREDENTIALS set, or not a GCE instance")
+	}
+
+	authToken, expiry, err := runner()
+	log.Info("refreshing credentials for '%s'", l.Registry)
+
+	if err != nil || authToken == "" {
+		return err
+	}
+
+	user := "oauth2accesstoken"
+	pass := authToken
+
+	l.Auth = base64.StdEncoding.EncodeToString([]byte(
+		fmt.Sprintf("{\"username\": \"%s\", \"password\": \"%s\"}",
+			user, pass)))
+	l.lastRefresh = time.Now()
+	l.expiry = expiry
+
+	return nil
 }
 
 /* ----------------------------------------------------------------------------
