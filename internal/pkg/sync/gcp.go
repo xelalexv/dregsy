@@ -2,8 +2,8 @@ package sync
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -14,7 +14,7 @@ import (
 	"golang.org/x/oauth2/jwt"
 )
 
-const url = "http://metadata/computeMetadata/v1/instance/service-accounts/default/token"
+const url = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
 type Response struct {
 	AccessToken string         `json:"access_token"`
@@ -38,7 +38,7 @@ func (l *location) getGCR() (gcr bool) {
 func isGCE() bool {
 	resp, err := http.Head(url)
 	if err != nil {
-		log.Fatal("Error reading response: ", err)
+		fmt.Fprintf(os.Stderr, "Error sending request to GCP metadata server: %v", err)
 	}
 
 	if resp.Header["Metadata-Flavor"][0] == "Google" {
