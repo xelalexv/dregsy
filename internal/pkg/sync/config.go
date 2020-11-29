@@ -399,7 +399,7 @@ func (l *location) refreshAuth() error {
 
 //
 func (l *location) refreshAuthGCP() error {
-	if l.expiry.Sub(l.lastRefresh) > 0 {
+	if l.expiry.Sub(time.Now()) > 0 {
 		return nil
 	}
 
@@ -426,7 +426,7 @@ func (l *location) refreshAuthGCP() error {
 	l.Auth = base64.StdEncoding.EncodeToString([]byte(
 		fmt.Sprintf("{\"username\": \"%s\", \"password\": \"%s\"}",
 			user, pass)))
-	l.lastRefresh = time.Now()
+
 	l.expiry = expiry
 
 	return nil
