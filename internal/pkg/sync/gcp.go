@@ -39,6 +39,7 @@ func isGCE() bool {
 	resp, err := http.Head(url)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error sending request to GCP metadata server: %v", err)
+		return false
 	}
 
 	if resp.Header["Metadata-Flavor"][0] == "Google" {
