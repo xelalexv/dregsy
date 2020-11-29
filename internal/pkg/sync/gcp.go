@@ -2,7 +2,6 @@ package sync
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -38,7 +37,6 @@ func (l *location) getGCR() (gcr bool) {
 func isGCE() bool {
 	resp, err := http.Head(url)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error sending request to GCP metadata server: %v", err)
 		return false
 	}
 
