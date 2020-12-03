@@ -276,12 +276,12 @@ func normalizePath(p string) string {
  *
  */
 type location struct {
-	Registry      string         `yaml:"registry"`
-	Auth          string         `yaml:"auth"`
-	SkipTLSVerify bool           `yaml:"skip-tls-verify"`
-	AuthRefresh   *time.Duration `yaml:"auth-refresh"`
-	lastRefresh   time.Time
-	expiry        time.Time
+	Registry            string         `yaml:"registry"`
+	Auth                string         `yaml:"auth"`
+	SkipTLSVerify       bool           `yaml:"skip-tls-verify"`
+	AuthRefresh         *time.Duration `yaml:"auth-refresh"`
+	ecrTokenLastRefresh time.Time
+	gcrTokenExpiry      time.Time
 }
 
 //
@@ -295,7 +295,7 @@ func (l *location) validate() error {
 		return errors.New("registry not set")
 	}
 
-	l.lastRefresh = time.Time{}
+	l.ecrTokenLastRefresh = time.Time{}
 
 	if l.AuthRefresh != nil {
 
@@ -345,7 +345,7 @@ func (l *location) refreshAuth() error {
 		return l.refreshAuthGCP()
 	}
 
-	if l.AuthRefresh == nil || time.Since(l.lastRefresh) < *l.AuthRefresh {
+	if l.AuthRefresh == nil || time.Since(l.ecrTokenLastRefresh) < *l.AuthRefresh {
 		return nil
 	}
 
@@ -389,7 +389,7 @@ func (l *location) refreshAuth() error {
 		l.Auth = base64.StdEncoding.EncodeToString([]byte(
 			fmt.Sprintf("{\"username\": \"%s\", \"password\": \"%s\"}",
 				user, pass)))
-		l.lastRefresh = time.Now()
+		l.ecrTokenLastRefresh = time.Now()
 
 		return nil
 	}
@@ -399,35 +399,34 @@ func (l *location) refreshAuth() error {
 
 //
 func (l *location) refreshAuthGCP() error {
-	if l.expiry.Sub(time.Now()) > 0 {
+	if l.gcrTokenExpiry.Sub(time.Now()) > 0 {
 		return nil
 	}
 
-	var runner func() (string, time.Time, error)
+	var (
+		authToken string
+		expiry    time.Time
+		err       error
+	)
 
 	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
-		runner = tokenFromCreds
+		authToken, expiry, err = tokenFromCreds()
 	} else if isGCE() {
-		runner = tokenFromMetadata
+		authToken, expiry, err = tokenFromMetadata()
 	} else {
 		return fmt.Errorf("No GOOGLE_APPLICATION_CREDENTIALS set, or not a GCE instance")
 	}
 
-	authToken, expiry, err := runner()
 	log.Info("refreshing credentials for '%s'", l.Registry)
 
 	if err != nil || authToken == "" {
 		return err
 	}
 
-	user := "oauth2accesstoken"
-	pass := authToken
-
 	l.Auth = base64.StdEncoding.EncodeToString([]byte(
-		fmt.Sprintf("{\"username\": \"%s\", \"password\": \"%s\"}",
-			user, pass)))
+		fmt.Sprintf("{\"username\": \"oauth2accesstoken\", \"password\": \"%s\"}", authToken)))
 
-	l.expiry = expiry
+	l.gcrTokenExpiry = expiry
 
 	return nil
 }

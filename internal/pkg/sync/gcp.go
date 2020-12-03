@@ -23,15 +23,9 @@ type Response struct {
 
 //
 func (l *location) isGCR() bool {
-	gcr := l.getGCR()
-	return gcr
-}
-
-//
-func (l *location) getGCR() (gcr bool) {
 	url := strings.Split(l.Registry, ".")
-	gcr = url[len(url)-2] == "gcr" && url[len(url)-1] == "io"
-	return
+	gcr := url[len(url)-2] == "gcr" && url[len(url)-1] == "io"
+	return gcr
 }
 
 func isGCE() bool {
@@ -40,8 +34,8 @@ func isGCE() bool {
 		return false
 	}
 
-	if resp.Header["Metadata-Flavor"][0] == "Google" {
-		return true
+	if _, ok := resp.Header["Metadata-Flavor"]; ok {
+		return resp.Header.Get("Metadata-Flavor") == "Google"
 	}
 
 	return false
