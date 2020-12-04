@@ -20,11 +20,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
-
-	"io/ioutil"
 
 	"gopkg.in/yaml.v2"
 
@@ -32,8 +31,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
+	log "github.com/sirupsen/logrus"
 
-	"github.com/xelalexv/dregsy/internal/pkg/log"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
 )
@@ -66,16 +65,15 @@ func (c *SyncConfig) validate() error {
 	case docker.RelayID:
 		if c.Docker == nil {
 			if c.DockerHost == "" && c.APIVersion == "" {
-				log.Warning(
-					"not specifying the 'docker' config item is deprecated")
+				log.Warn("not specifying the 'docker' config item is deprecated")
 			}
 			templ := "the top-level '%s' setting is deprecated, " +
 				"use 'docker' config item instead"
 			if c.DockerHost != "" {
-				log.Warning(fmt.Sprintf(templ, "dockerhost"))
+				log.Warnf(templ, "dockerhost")
 			}
 			if c.APIVersion != "" {
-				log.Warning(fmt.Sprintf(templ, "api-version"))
+				log.Warnf(templ, "api-version")
 			}
 			c.Docker = &docker.RelayConfig{
 				DockerHost: c.DockerHost,
@@ -86,11 +84,11 @@ func (c *SyncConfig) validate() error {
 			templ := "discarding deprecated top-level '%s' setting and " +
 				"using 'docker' config item instead"
 			if c.DockerHost != "" {
-				log.Warning(fmt.Sprintf(templ, "dockerhost"))
+				log.Warnf(templ, "dockerhost")
 				c.DockerHost = ""
 			}
 			if c.APIVersion != "" {
-				log.Warning(fmt.Sprintf(templ, "api-version"))
+				log.Warnf(templ, "api-version")
 				c.APIVersion = ""
 			}
 		}
@@ -249,7 +247,7 @@ func (t *Task) ensureTargetExists(ref string) error {
 
 		out, err := svc.DescribeRepositories(inpDescr)
 		if err == nil && len(out.Repositories) > 0 {
-			log.Info("target '%s' already exists", ref)
+			log.WithField("ref", ref).Info("target already exists")
 			return nil
 		}
 
@@ -263,7 +261,7 @@ func (t *Task) ensureTargetExists(ref string) error {
 			}
 		}
 
-		log.Info("creating target '%s'", ref)
+		log.WithField("ref", ref).Info("creating target")
 		inpCrea := &ecr.CreateRepositoryInput{
 			RepositoryName: aws.String(path),
 		}
@@ -321,9 +319,9 @@ func (l *Location) validate() error {
 
 		} else if *l.AuthRefresh < minimumAuthRefreshInterval {
 			*l.AuthRefresh = time.Duration(minimumAuthRefreshInterval)
-			log.Warning(
-				"auth-refresh for '%s' too short, setting to minimum: %s",
-				l.Registry, minimumAuthRefreshInterval)
+			log.WithField("registry", l.Registry).
+				Warnf("auth-refresh too short, setting to minimum: %s",
+					minimumAuthRefreshInterval)
 		}
 	}
 
@@ -363,7 +361,7 @@ func (l *Location) RefreshAuth() error {
 	}
 
 	_, region, account := l.GetECR()
-	log.Info("refreshing credentials for '%s'", l.Registry)
+	log.WithField("registry", l.Registry).Info("refreshing credentials")
 
 	sess, err := session.NewSession()
 
@@ -412,6 +410,7 @@ func (l *Location) RefreshAuth() error {
 
 //
 func (l *Location) refreshAuthGCP() error {
+
 	if l.gcrTokenExpiry.Sub(time.Now()) > 0 {
 		return nil
 	}
@@ -427,17 +426,20 @@ func (l *Location) refreshAuthGCP() error {
 	} else if isGCE() {
 		authToken, expiry, err = tokenFromMetadata()
 	} else {
-		return fmt.Errorf("No GOOGLE_APPLICATION_CREDENTIALS set, or not a GCE instance")
+		return fmt.Errorf(
+			"No GOOGLE_APPLICATION_CREDENTIALS set, or not a GCE instance")
 	}
 
-	log.Info("refreshing credentials for '%s'", l.Registry)
+	log.WithField("registry", l.Registry).Info("refreshing credentials")
 
 	if err != nil || authToken == "" {
 		return err
 	}
 
 	l.Auth = base64.StdEncoding.EncodeToString([]byte(
-		fmt.Sprintf("{\"username\": \"oauth2accesstoken\", \"password\": \"%s\"}", authToken)))
+		fmt.Sprintf(
+			"{\"username\": \"oauth2accesstoken\", \"password\": \"%s\"}",
+			authToken)))
 
 	l.gcrTokenExpiry = expiry
 

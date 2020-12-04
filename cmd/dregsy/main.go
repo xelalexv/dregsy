@@ -20,10 +20,45 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
-	"github.com/xelalexv/dregsy/internal/pkg/log"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/xelalexv/dregsy/internal/pkg/sync"
 )
+
+//
+func init() {
+
+	log.SetOutput(os.Stdout)
+
+	format := strings.ToLower(os.Getenv("LOG_FORMAT"))
+	switch format {
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	case "text":
+		log.SetFormatter(&log.TextFormatter{
+			ForceColors: strings.ToLower(os.Getenv("LOG_FORCE_COLORS")) == "true"})
+	case "":
+	default:
+		log.Errorf("invalid log format: '%s'", format)
+	}
+
+	if strings.ToLower(os.Getenv("LOG_METHODS")) == "true" {
+		log.SetReportCaller(true)
+	}
+
+	level := os.Getenv("LOG_LEVEL")
+	if level != "" {
+		l, err := log.ParseLevel(level)
+		if err != nil {
+			log.Errorf("invalid log level: '%s'; valid levels are: panic, "+
+				"fatal, error, warn, info, debug, trace", level)
+		} else {
+			log.SetLevel(l)
+		}
+	}
+}
 
 //
 var DregsyVersion string
@@ -36,7 +71,7 @@ var dregsyExitCode int
 
 //
 func version() {
-	log.Info("\ndregsy %s\n", DregsyVersion)
+	log.Infof("dregsy %s", DregsyVersion)
 }
 
 //

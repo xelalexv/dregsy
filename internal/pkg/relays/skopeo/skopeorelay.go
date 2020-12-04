@@ -21,7 +21,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/xelalexv/dregsy/internal/pkg/log"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
 )
 
@@ -64,9 +65,8 @@ func (r *SkopeoRelay) Prepare() error {
 	if err := runSkopeo(bufOut, nil, true, "--version"); err != nil {
 		return fmt.Errorf("cannot execute skopeo: %v", err)
 	}
-	log.Println()
 	log.Info(bufOut.String())
-	log.Info("%s relay ready", RelayID)
+	log.WithField("relay", RelayID).Info("relay ready")
 	return nil
 }
 
@@ -124,13 +124,13 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 
 	errs := false
 	for _, tag := range tags {
-		log.Println()
-		log.Info("syncing tag '%s':", tag)
-		errs = errs || log.Error(
-			runSkopeo(r.wrOut, r.wrOut, verbose,
-				append(cmd,
-					fmt.Sprintf("docker://%s:%s", srcRef, tag),
-					fmt.Sprintf("docker://%s:%s", destRef, tag))...))
+		log.WithField("tag", tag).Info("syncing tag")
+		if err := runSkopeo(r.wrOut, r.wrOut, verbose, append(cmd,
+			fmt.Sprintf("docker://%s:%s", srcRef, tag),
+			fmt.Sprintf("docker://%s:%s", destRef, tag))...); err != nil {
+			log.Error(err)
+			errs = true
+		}
 	}
 
 	if errs {

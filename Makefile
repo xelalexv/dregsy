@@ -139,6 +139,7 @@ endif
         -v $(shell pwd)/$(BINARIES):/go/bin $(CACHE_VOLS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 \
+		-e LOG_LEVEL=debug -e LOG_FORMAT=text -e LOG_FORCE_COLORS=true \
 		--env-file <(sed -E 's/\ +=\ +/=/g' .makerc) \
 		xelalex/$(REPO)-tests sh -c "\
 			go test $(TEST_OPTS) \

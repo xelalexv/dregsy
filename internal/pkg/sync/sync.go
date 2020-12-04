@@ -18,13 +18,13 @@ package sync
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/xelalexv/dregsy/internal/pkg/log"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
 )
@@ -50,21 +50,18 @@ func New(conf *SyncConfig) (*Sync, error) {
 
 	sync := &Sync{}
 
-	var out io.Writer = sync
-	if log.ToTerminal {
-		out = nil
-	}
-
 	var relay Relay
 	var err error
 
 	switch conf.Relay {
 
 	case docker.RelayID:
-		relay, err = docker.NewDockerRelay(conf.Docker, out)
+		relay, err = docker.NewDockerRelay(
+			conf.Docker, log.StandardLogger().WriterLevel(log.DebugLevel))
 
 	case skopeo.RelayID:
-		relay = skopeo.NewSkopeoRelay(conf.Skopeo, out)
+		relay = skopeo.NewSkopeoRelay(
+			conf.Skopeo, log.StandardLogger().WriterLevel(log.DebugLevel))
 
 	default:
 		err = fmt.Errorf("relay type '%s' not supported", conf.Relay)
@@ -111,7 +108,6 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig) error {
 	if err := s.relay.Prepare(); err != nil {
 		return err
 	}
-	log.Println()
 
 	// one-off tasks
 	for _, t := range conf.Tasks {
@@ -136,16 +132,15 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig) error {
 
 	for ticking {
 		log.Info("waiting for next sync task...")
-		log.Println()
 		select {
 		case t := <-c: // actual task
 			s.syncTask(t)
 			s.tick() // send a tick
 		case sig := <-sigs: // interrupt signal
-			log.Info("\nreceived '%v' signal, stopping ...\n", sig)
+			log.WithField("signal", sig).Info("received signal, stopping ...")
 			ticking = false
 		case <-s.shutdown: // shutdown flagged
-			log.Info("\nshutdown flagged, stopping ...\n")
+			log.Info("shutdown flagged, stopping ...")
 			ticking = false
 			s.tick() // send a final tick to release shutdown client
 		}
@@ -170,32 +165,43 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig) error {
 func (s *Sync) syncTask(t *Task) {
 
 	if t.tooSoon() {
-		log.Info("task '%s' fired too soon, skipping", t.Name)
+		log.WithField("task", t.Name).Info("task fired too soon, skipping")
 		return
 	}
 
-	log.Info("syncing task '%s': '%s' --> '%s'",
-		t.Name, t.Source.Registry, t.Target.Registry)
+	log.WithFields(log.Fields{
+		"task":   t.Name,
+		"source": t.Source.Registry,
+		"target": t.Target.Registry}).Info("syncing task")
 	t.failed = false
 
 	for _, m := range t.Mappings {
-		log.Info("mapping '%s' to '%s'", m.From, m.To)
+
+		log.WithFields(log.Fields{"from": m.From, "to": m.To}).Info("mapping")
+
 		src, trgt := t.mappingRefs(m)
-		t.fail(log.Error(t.Source.RefreshAuth()))
-		t.fail(log.Error(t.Target.RefreshAuth()))
-		t.fail(log.Error(t.ensureTargetExists(trgt)))
-		t.fail(log.Error(s.relay.Sync(
-			src, t.Source.Auth, t.Source.SkipTLSVerify,
-			trgt, t.Target.Auth, t.Target.SkipTLSVerify,
-			m.Tags, t.Verbose)))
+		if err := t.Source.RefreshAuth(); err != nil {
+			log.Error(err)
+			t.fail(true)
+			continue
+		}
+		if err := t.Target.RefreshAuth(); err != nil {
+			log.Error(err)
+			t.fail(true)
+			continue
+		}
+		if err := t.ensureTargetExists(trgt); err != nil {
+			log.Error(err)
+			t.fail(true)
+			continue
+		}
+		if err := s.relay.Sync(src, t.Source.Auth, t.Source.SkipTLSVerify,
+			trgt, t.Target.Auth, t.Target.SkipTLSVerify, m.Tags, t.Verbose); err != nil {
+			log.Error(err)
+			t.fail(true)
+		}
 	}
 
 	t.lastTick = time.Now()
 	log.Println()
-}
-
-//
-func (s *Sync) Write(p []byte) (n int, err error) {
-	fmt.Print(string(p))
-	return len(p), nil
 }

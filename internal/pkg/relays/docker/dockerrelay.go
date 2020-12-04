@@ -22,8 +22,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
-
-	"github.com/xelalexv/dregsy/internal/pkg/log"
+	log "github.com/sirupsen/logrus"
 )
 
 const RelayID = "docker"
@@ -70,14 +69,13 @@ func (r *DockerRelay) Prepare() error {
 
 	// when we begin, Docker daemon may not be ready yet, e.g. when dregsy runs
 	// side by side with a Docker-in-Docker container inside a pod on k8s
-	log.Println()
 	log.Info("pinging Docker daemon...")
 
 	if _, err := r.client.ping(30, 10*time.Second); err != nil {
 		return err
 	}
 
-	log.Info("ok, %s relay ready", RelayID)
+	log.WithField("relay", RelayID).Info("ok, relay ready")
 	return nil
 }
 
@@ -91,7 +89,7 @@ func (r *DockerRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	trgtRef, trgtAuth string, trgtSkipTLSVerify bool,
 	tags []string, verbose bool) error {
 
-	log.Info("pulling source image '%s'", srcRef)
+	log.WithField("ref", srcRef).Info("pulling source image")
 	var err error
 
 	if len(tags) == 0 {
@@ -110,7 +108,7 @@ func (r *DockerRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 		}
 	}
 
-	log.Info("relevant tags")
+	log.Info("relevant tags:")
 	var srcImages []*image
 
 	if len(tags) == 0 {
@@ -135,17 +133,17 @@ func (r *DockerRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	}
 
 	for _, img := range srcImages {
-		log.Info(" - %s", img.refWithTags())
+		log.Infof(" - %s", img.refWithTags())
 	}
 
-	log.Info("setting tags for target image '%s'", trgtRef)
+	log.WithField("ref", trgtRef).Info("setting tags for target image")
 
 	_, err = r.tag(srcImages, trgtRef)
 	if err != nil {
 		return fmt.Errorf("error setting tags: %v", err)
 	}
 
-	log.Info("pushing target image '%s'", trgtRef)
+	log.WithField("ref", trgtRef).Info("pushing target image")
 
 	if err := r.push(trgtRef, trgtAuth, verbose); err != nil {
 		return fmt.Errorf("error pushing target image: %v", err)
