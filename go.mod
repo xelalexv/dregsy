@@ -13,6 +13,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/kardianos/govendor v1.0.9 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
+	github.com/sirupsen/logrus v1.7.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
 	gopkg.in/yaml.v2 v2.3.0

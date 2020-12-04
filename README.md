@@ -145,6 +145,16 @@ dregsy -config={path to config file}
 
 If there are any periodic sync tasks defined (see *Configuration* above), *dregsy* remains running indefinitely. Otherwise, it will return once all one-off tasks have been processed.
 
+### Logging
+Logging behavior can be changed with these environment variables:
+
+| variable     | function   | values                                            |
+|--------------|------------|---------------------------------------------------|
+| `LOG_LEVEL`  | log level; defaults to `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace`|
+| `LOG_FORMAT` | log format; gets automatically switched to *JSON* when *dregsy* is run without a TTY | `json` to force *JSON* log format, `text` to force text output |
+| `LOG_FORCE_COLORS` | force colored log messages when running with a TTY | `true`, `false` |
+| `LOG_METHODS` | include method names in log messages | `true`, `false` |
+
 ### Running Natively
 If you run *dregsy* natively on your system, with relay type `docker`, the *Docker* daemon of your system will be used as the relay for all sync tasks, so all synced images will wind up in the *Docker* storage of that daemon.
 

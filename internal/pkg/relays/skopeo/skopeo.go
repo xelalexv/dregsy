@@ -23,11 +23,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/xelalexv/dregsy/internal/pkg/log"
+	log "github.com/sirupsen/logrus"
 )
 
 const defaultSkopeoBinary = "skopeo"
@@ -98,12 +97,10 @@ func chooseOutStream(out io.Writer, verbose, isErrorStream bool) io.Writer {
 		if out != nil {
 			return out
 		}
-		if log.ToTerminal {
-			if isErrorStream {
-				return os.Stderr
-			}
-			return os.Stdout
+		if isErrorStream {
+			return log.StandardLogger().WriterLevel(log.ErrorLevel)
 		}
+		return log.StandardLogger().WriterLevel(log.InfoLevel)
 	}
 	return ioutil.Discard
 }
@@ -144,12 +141,14 @@ func DecodeJSONAuth(authBase64 string) string {
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(authBase64)
-	if log.Error(err) {
+	if err != nil {
+		log.Error(err)
 		return ""
 	}
 
 	var ret creds
-	if err := json.Unmarshal([]byte(decoded), &ret); log.Error(err) {
+	if err := json.Unmarshal([]byte(decoded), &ret); err != nil {
+		log.Error(err)
 		return ""
 	}
 

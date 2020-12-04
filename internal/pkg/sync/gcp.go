@@ -15,6 +15,7 @@ import (
 
 const url = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
+//
 type Response struct {
 	AccessToken string         `json:"access_token"`
 	ExpiresIn   *time.Duration `json:"expires_in"`
@@ -28,6 +29,7 @@ func (l *Location) isGCR() bool {
 	return gcr
 }
 
+//
 func isGCE() bool {
 	resp, err := http.Head(url)
 	if err != nil {
@@ -41,7 +43,9 @@ func isGCE() bool {
 	return false
 }
 
+//
 func tokenFromCreds() (string, time.Time, error) {
+
 	b, err := ioutil.ReadFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 	if err != nil {
 		return "", time.Time{}, err
@@ -70,7 +74,9 @@ func tokenFromCreds() (string, time.Time, error) {
 	return token.AccessToken, token.Expiry, nil
 }
 
+//
 func tokenFromMetadata() (string, time.Time, error) {
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", time.Time{}, err
