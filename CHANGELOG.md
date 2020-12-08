@@ -1,5 +1,11 @@
 # Changelog
 
+## `0.3.2`
+- support for *Google Container Registry* (issue #30)
+- switched to `logrus` for logging (issue #32)
+- added basic e2e tests (issue #28)
+- code refactored
+
 ## `0.3.1`
 - added more info to error messages during image ref matching (*Docker* relay, issue #18)
 - upgraded to *Skopeo* 0.2.0, switched to using *Skopeo*'s `list-tags` command (issue #13)
