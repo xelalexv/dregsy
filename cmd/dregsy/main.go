@@ -112,7 +112,10 @@ func main() {
 
 	err = s.SyncFromConfig(conf)
 	s.Dispose()
+
+	log.Debug("exit main")
 	failOnError(err)
+	exit(0)
 }
 
 //

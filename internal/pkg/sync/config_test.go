@@ -27,12 +27,12 @@ func TestValidSyncConfigs(t *testing.T) {
 
 	th := test.NewTestHelper(t)
 
-	c, e := LoadConfig(th.GetFixture("e2e/skopeo.yaml"))
+	c, e := LoadConfig(th.GetFixture("config/skopeo-valid.yaml"))
 	th.AssertNoError(e)
 	th.AssertNotNil(c)
 	th.AssertEqual("skopeo", c.Relay)
 
-	c, e = LoadConfig(th.GetFixture("e2e/docker.yaml"))
+	c, e = LoadConfig(th.GetFixture("config/docker-valid.yaml"))
 	th.AssertNoError(e)
 	th.AssertNotNil(c)
 	th.AssertEqual("docker", c.Relay)

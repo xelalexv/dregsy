@@ -146,9 +146,10 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig) error {
 		}
 	}
 
+	log.Debug("stopping tasks")
 	errs := false
 	for _, t := range conf.Tasks {
-		t.stopTicking(c)
+		t.stopTicking()
 		errs = errs || t.failed
 	}
 
@@ -203,5 +204,4 @@ func (s *Sync) syncTask(t *Task) {
 	}
 
 	t.lastTick = time.Now()
-	log.Println()
 }

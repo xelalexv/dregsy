@@ -31,6 +31,10 @@ GO_IMAGE=golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db9629
 # You need to set the following parameters in configuration file ${DIM}.makerc${NRM}, with every line
 # containing a parameter in the form ${ITL}key = value${NRM}:
 #
+#	${ITL}DREGSY_TEST_DOCKERHOST${NRM}		how the ${ITL}Docker${NRM} daemon is set up for testing, i.e. how
+#					it can be reached from within the test container, which
+#					uses host networking; defaults to ${DIM}tcp://127.0.0.1:2375${NRM}
+#
 #	${ITL}DREGSY_TEST_ECR_REGISTRY${NRM}	the ECR instance to use
 #	${ITL}DREGSY_TEST_ECR_REPO${NRM} 		the repo to use within the ECR instance;
 #					defaults to ${DIM}dregsy/test${NRM}
@@ -41,6 +45,15 @@ GO_IMAGE=golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db9629
 #				pulling & pushing from/to it, and deleting it
 #
 #	If any of the above settings without a default is missing, ECR tests are skipped!
+#
+#	${ITL}DREGSY_TEST_GCR_HOST${NRM}		the GCR host to use; defaults to ${DIM}eu.gcr.io${NRM}
+#	${ITL}DREGSY_TEST_GCR_PROJECT${NRM} 	the GCP project ID to use
+#	${ITL}DREGSY_TEST_GCR_IMAGE${NRM} 		the image to use; defaults to ${DIM}dregsy/test${NRM}
+#
+#	${ITL}GCP_CREDENTIALS${NRM}		full path to credentials file for GCP service account with
+#				which to test GCR
+#
+#	If any of the above settings without a default is missing, GCR tests are skipped!
 #
 -include .makerc
 
@@ -79,6 +92,12 @@ else
     CACHE_VOLS=-v $(GOPATH)/pkg:/go/pkg -v /home/$(USER)/.cache:/.cache
 endif
 
+ifeq ($(GCP_CREDENTIALS),)
+	GCP_CREDS=
+else
+	GCP_CREDS=-v $(GCP_CREDENTIALS):/var/run/secrets/gcp-creds.json -e GOOGLE_APPLICATION_CREDENTIALS=/var/run/secrets/gcp-creds.json
+endif
+
 export
 
 #
@@ -92,7 +111,7 @@ help:
 
 
 .PHONY: release
-release: clean dregsy imgdregsy imgtests tests
+release: clean rmi dregsy imgdregsy imgtests registryrestart tests registrydown
 #	clean, do an isolated build, create container images, and test
 #
 
@@ -125,6 +144,14 @@ imgtests:
 	docker build -t xelalex/$(REPO)-tests -f ./hack/tests.Dockerfile .
 
 
+.PHONY: rmi
+rmi:
+#	remove the ${ITL}dregsy${NRM} and testing container images
+#
+	docker rmi -f xelalex/$(REPO)
+	docker rmi -f xelalex/$(REPO)-tests
+
+
 .PHONY: tests
 tests: prep
 #	run tests; assumes tests image was built and local ${ITL}Docker${NRM} registry running
@@ -134,10 +161,12 @@ ifeq (,$(wildcard .makerc))
 	$(warning ***** Missing .makerc! Some tests may be skipped or fail!)
 endif
 	@echo -e "\ntests:"
-	docker run --privileged --rm  \
+	docker run --privileged --network host --rm  \
 		-v $(shell pwd):/go/src/$(REPO) -w /go/src/$(REPO) \
-        -v $(shell pwd)/$(BINARIES):/go/bin $(CACHE_VOLS) \
+		-v $(shell pwd)/$(BINARIES):/go/bin \
 		-v /var/run/docker.sock:/var/run/docker.sock \
+		$(CACHE_VOLS) \
+		$(GCP_CREDS) \
 		-e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 \
 		-e LOG_LEVEL=debug -e LOG_FORMAT=text -e LOG_FORCE_COLORS=true \
 		--env-file <(sed -E 's/\ +=\ +/=/g' .makerc) \
@@ -161,7 +190,13 @@ registryup:
 registrydown:
 #	stop local ${ITL}Docker${NRM} registry
 #
-	docker stop dregsy-test-registry
+	docker stop dregsy-test-registry || true
+
+
+.PHONY: registryrestart
+registryrestart: registrydown registryup
+#	restart local ${ITL}Docker${NRM} registry
+#
 
 
 .PHONY: clean

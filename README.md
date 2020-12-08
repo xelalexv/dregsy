@@ -135,7 +135,7 @@ Note however that you either need to set environment variables `AWS_ACCESS_KEY_I
 
 ### *GCR (Google Cloud Platform)*
 
-If a source or target is a *Google Container Registry (GCR)*, `auth` may be omitted altogether. In this case either `GOOGLE_APPLICATON_CREDENTIALS` variable must be set (which is supposed to contain a path to a JSON file with credentials for a *GCP* service account), or *dregsy* must be run on a *GCE* instance with an appropriate service account attached. In case of *GCR*, `registry` must be specified as any of *GCR* addresses (i. e. `gcr.io`, `us.gcr.io`, `eu.gcr.io`, or `asia.gcr.io`), while the `from/to` mapping must include your *GCP* project name (i. e. `your-project-123/your-image`). Note that `GOOGLE_APPLICATON_CREDENTIALS`, if set, takes precedence even on a *GCE* instance.
+If a source or target is a *Google Container Registry (GCR)*, `auth` may be omitted altogether. In this case either `GOOGLE_APPLICATION_CREDENTIALS` variable must be set (which is supposed to contain a path to a JSON file with credentials for a *GCP* service account), or *dregsy* must be run on a *GCE* instance with an appropriate service account attached. In case of *GCR*, `registry` must be specified as any of *GCR* addresses (i.e. `gcr.io`, `us.gcr.io`, `eu.gcr.io`, or `asia.gcr.io`), while the `from/to` mapping must include your *GCP* project name (i.e. `your-project-123/your-image`). Note that `GOOGLE_APPLICATION_CREDENTIALS`, if set, takes precedence even on a *GCE* instance.
 
 ## Usage
 
@@ -241,6 +241,37 @@ spec:
 ```
 
 
-## Building
+## Development
 
-The `Makefile` has targets for building the binary and *Docker* image, and other stuff. Just run `make` to get a list. Note that for consistency, building is done inside a *Golang* build container, so you will need *Docker* to build. *dregsy*'s *Docker* image is based on *Alpine*, and installs *Skopeo* via `apk` during the image build.
+### Building
+
+The `Makefile` has targets for building the binary and *Docker* image, and other stuff. Just run `make` to get a list of the targets, and info about configuration items. Note that for consistency, building is done inside a *Golang* build container, so you will need *Docker* to build. *dregsy*'s *Docker* image is based on *Alpine*, and installs *Skopeo* via `apk` during the image build.
+
+### Testing
+
+Tests are also started via the `Makefile`. To run the tests, you will need to prepare the following:
+
+- Configure the *Docker* daemon: The tests run containerized, but need access to the local *Docker* daemon for testing the *Docker* relay. One way is to mount the `/var/run/docker.socks` socket into the container (the `Makefile` takes care of that). However, the `docker` group on the host may not map onto the group of the user inside the testing container. The preferred way is therefore to let the *Docker* daemon listen on `127.0.0.1:2375`. Since the testing container runs with host network, the tests can access this directly. Decide which setup to use and configure the *Docker* daemon accordingly. Additionally, set it to accept `127.0.0.1:5000` as an insecure registry.
+
+- An *AWS* account to test syncing with *ECR*: Create a technical user in that account. This user should have full *ECR* permissions, i.e. the `AmazonEC2ContainerRegistryFullAccess` policy attached, since it will delete the used repo after the tests are done.
+
+- A *Google Cloud* account to test syncing with *GCR*: Create a project with the *Container Registry* API enabled. In that project, you need a service account with the roles *Cloud Build Service Agent* and *Storage Object Admin* enabled, since this service account also will need to delete the synced images again after the tests.
+
+The details for above requirements are configured via a `.makerc` file in the root of this project. Just run `make` and check the *Notes* section in the help output. Here's an example:
+
+```make
+# Docker config; to use the Unix socket, set to unix:///var/run/docker.sock
+DREGSY_TEST_DOCKERHOST = tcp://127.0.0.1:2375
+
+# ECR
+DREGSY_TEST_ECR_REGISTRY = {account ID}.dkr.ecr.eu-central-1.amazonaws.com
+DREGSY_TEST_ECR_REPO = dregsy/test
+AWS_ACCESS_KEY_ID = {key ID}
+AWS_SECRET_ACCESS_KEY = {access key}
+
+# GCR
+DREGSY_TEST_GCR_HOST = eu.gcr.io
+DREGSY_TEST_GCR_PROJECT = {your project}
+DREGSY_TEST_GCR_IMAGE = dregsy/test
+GCP_CREDENTIALS = {full path to access JSON of service account}
+```
