@@ -23,68 +23,58 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ecr"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
 	"github.com/xelalexv/dregsy/internal/pkg/sync"
 	"github.com/xelalexv/dregsy/internal/pkg/test"
+	"github.com/xelalexv/dregsy/internal/pkg/test/registries"
 )
-
-//
-const (
-	EnvAccessKeyID     = "AWS_ACCESS_KEY_ID"
-	EnvSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
-	EnvECRRegistry     = "DREGSY_TEST_ECR_REGISTRY"
-	EnvECRRepo         = "DREGSY_TEST_ECR_REPO"
-)
-
-//
-type TestParams struct {
-	ECRRegistry string
-	ECRRepo     string
-}
-
-//
-func getTestParams() *TestParams {
-	ret := &TestParams{
-		ECRRegistry: os.Getenv(EnvECRRegistry),
-		ECRRepo:     os.Getenv(EnvECRRepo),
-	}
-	if ret.ECRRepo == "" {
-		ret.ECRRepo = "dregsy/test"
-	}
-	return ret
-}
 
 //
 func TestE2EDocker(t *testing.T) {
-	tryConfig(test.NewTestHelper(t), "e2e/docker.yaml", true, nil)
+	tryConfig(test.NewTestHelper(t), "e2e/docker.yaml", true, test.GetParams())
 }
 
 //
 func TestE2EDockerECR(t *testing.T) {
-	skipIfECRNotConfigured(t)
-	p := getTestParams()
-	removeECRRepo(p.ECRRegistry, p.ECRRepo)
+	registries.SkipIfECRNotConfigured(t)
+	p := test.GetParams()
+	registries.RemoveECRRepo(t, p)
 	tryConfig(test.NewTestHelper(t), "e2e/docker-ecr.yaml", true, p)
-	removeECRRepo(p.ECRRegistry, p.ECRRepo)
+	registries.RemoveECRRepo(t, p)
+}
+
+//
+func TestE2EDockerGCR(t *testing.T) {
+	registries.SkipIfGCRNotConfigured(t)
+	p := test.GetParams()
+	registries.RemoveGCRRepo(t, p)
+	tryConfig(test.NewTestHelper(t), "e2e/docker-gcr.yaml", true, p)
+	registries.RemoveGCRRepo(t, p)
 }
 
 //
 func TestE2ESkopeo(t *testing.T) {
-	tryConfig(test.NewTestHelper(t), "e2e/skopeo.yaml", true, nil)
+	tryConfig(test.NewTestHelper(t), "e2e/skopeo.yaml", true, test.GetParams())
 }
 
 //
 func TestE2ESkopeoECR(t *testing.T) {
-	skipIfECRNotConfigured(t)
-	p := getTestParams()
-	removeECRRepo(p.ECRRegistry, p.ECRRepo)
+	registries.SkipIfECRNotConfigured(t)
+	p := test.GetParams()
+	registries.RemoveECRRepo(t, p)
 	tryConfig(test.NewTestHelper(t), "e2e/skopeo-ecr.yaml", true, p)
-	removeECRRepo(p.ECRRegistry, p.ECRRepo)
+	registries.RemoveECRRepo(t, p)
+}
+
+//
+func TestE2ESkopeoGCR(t *testing.T) {
+	registries.SkipIfGCRNotConfigured(t)
+	p := test.GetParams()
+	registries.RemoveGCRRepo(t, p)
+	tryConfig(test.NewTestHelper(t), "e2e/skopeo-gcr.yaml", true, p)
+	registries.RemoveGCRRepo(t, p)
 }
 
 //
@@ -108,6 +98,7 @@ func tryConfig(th *test.TestHelper, file string, verify bool, data interface{}) 
 		return
 	}
 
+	log.Info("TEST - validating result")
 	c, err := sync.LoadConfig(dst)
 	th.AssertNoError(err)
 
@@ -178,12 +169,14 @@ func runDregsy(th *test.TestHelper, ticks int, wait time.Duration,
 	}
 
 	if ticks > 0 || wait > 0 {
+		log.Info("TEST - shutting down dregsy")
 		instance.Shutdown()
 	}
 
 	for i := 0; i < 10; i++ {
 		select {
 		case <-testSync:
+			log.Info("TEST - dregsy stopped")
 			return dregsyExitCode
 		default:
 			time.Sleep(time.Second)
@@ -191,59 +184,4 @@ func runDregsy(th *test.TestHelper, ticks int, wait time.Duration,
 	}
 
 	panic("dregsy did not stop")
-}
-
-//
-func skipIfECRNotConfigured(t *testing.T) {
-	var missing []string
-	if os.Getenv(EnvAccessKeyID) == "" {
-		missing = append(missing, EnvAccessKeyID)
-	}
-	if os.Getenv(EnvSecretAccessKey) == "" {
-		missing = append(missing, EnvSecretAccessKey)
-	}
-	if os.Getenv(EnvECRRegistry) == "" {
-		missing = append(missing, EnvECRRegistry)
-	}
-	if len(missing) > 0 {
-		t.Skipf("skipping, ECR not configured, missing these environment variables: %v",
-			missing)
-	}
-}
-
-//
-func removeECRRepo(registry, repo string) error {
-
-	loc := &sync.Location{Registry: registry}
-	isEcr, region, _ := loc.GetECR()
-
-	if !isEcr {
-		return nil
-	}
-
-	sess, err := session.NewSession()
-	if err != nil {
-		return err
-	}
-
-	svc := ecr.New(sess, &aws.Config{
-		Region: aws.String(region),
-	})
-
-	inpDel := &ecr.DeleteRepositoryInput{
-		Force:          aws.Bool(true),
-		RepositoryName: aws.String(repo),
-	}
-
-	_, err = svc.DeleteRepository(inpDel)
-
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == ecr.ErrCodeRepositoryNotFoundException {
-				return nil
-			}
-		}
-	}
-
-	return err
 }

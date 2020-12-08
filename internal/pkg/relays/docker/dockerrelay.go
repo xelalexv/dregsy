@@ -81,6 +81,7 @@ func (r *DockerRelay) Prepare() error {
 
 //
 func (r *DockerRelay) Dispose() error {
+	log.WithField("relay", RelayID).Info("disposing relay")
 	return r.client.close()
 }
 

@@ -46,7 +46,7 @@ function synopsis {
 
     echo -e "\n${BLD}TARGETS${NRM}"
     print_sorted_help "$(cat "${files[@]}" \
-        | awk '{FS=":"}
+        | gawk '{FS=":"}
             /^[a-zA-Z0-9][-a-zA-Z0-9_\.]+:{1,2}[-a-zA-Z0-9_\. ]*$/{f=1; printf "\n${ITL}${BLD}%s${NRM}\n", $1; next}
             /^[^#].*$/{f=0} f' \
         | tr -d '#')"
@@ -55,18 +55,18 @@ function synopsis {
 
     # .makerc settings
     print_formatted_help "$(cat "${files[@]}" \
-        | awk '/^## makerc$/{f=1; next} /^[^#].*$/{f=0} /^$/{f=0} f' \
+        | gawk '/^## makerc$/{f=1; next} /^[^#].*$/{f=0} /^$/{f=0} f' \
         | tr -d '#')"
     echo
 
     # env settings
     print_formatted_help "$(cat "${files[@]}" \
-        | awk '/^## env$/{f=1; next} /^[^#].*$/{f=0} /^$/{f=0} f' \
+        | gawk '/^## env$/{f=1; next} /^[^#].*$/{f=0} /^$/{f=0} f' \
         | tr -d '#')"
 
     # other notes
     print_formatted_help "$(cat "${files[@]}" \
-        | awk '/^##$/{f=1; printf "-%s", $0; next} /^[^#].*$/{f=0} /^$/{f=0} f' \
+        | gawk '/^##$/{f=1; printf "-%s", $0; next} /^[^#].*$/{f=0} /^$/{f=0} f' \
         | tr -d '#')"
     echo
 }
@@ -76,7 +76,7 @@ function synopsis {
 #
 function print_sorted_help {
     print_formatted_help "$1" \
-        | awk 'BEGIN{print "\0"}
+        | gawk 'BEGIN{print "\0"}
             /^$/{printf "\0"} {print $0}' \
         | sort -z \
         | tr -d '\000' \
