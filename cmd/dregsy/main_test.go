@@ -32,8 +32,15 @@ import (
 )
 
 //
+func TestE2EOneoff(t *testing.T) {
+	tryConfig(test.NewTestHelper(t),
+		"e2e/oneoff.yaml", 0, 0, true, test.GetParams())
+}
+
+//
 func TestE2EDocker(t *testing.T) {
-	tryConfig(test.NewTestHelper(t), "e2e/docker.yaml", true, test.GetParams())
+	tryConfig(test.NewTestHelper(t),
+		"e2e/docker.yaml", 1, 0, true, test.GetParams())
 }
 
 //
@@ -41,7 +48,7 @@ func TestE2EDockerECR(t *testing.T) {
 	registries.SkipIfECRNotConfigured(t)
 	p := test.GetParams()
 	registries.RemoveECRRepo(t, p)
-	tryConfig(test.NewTestHelper(t), "e2e/docker-ecr.yaml", true, p)
+	tryConfig(test.NewTestHelper(t), "e2e/docker-ecr.yaml", 1, 0, true, p)
 	registries.RemoveECRRepo(t, p)
 }
 
@@ -50,13 +57,14 @@ func TestE2EDockerGCR(t *testing.T) {
 	registries.SkipIfGCRNotConfigured(t)
 	p := test.GetParams()
 	registries.RemoveGCRRepo(t, p)
-	tryConfig(test.NewTestHelper(t), "e2e/docker-gcr.yaml", true, p)
+	tryConfig(test.NewTestHelper(t), "e2e/docker-gcr.yaml", 1, 0, true, p)
 	registries.RemoveGCRRepo(t, p)
 }
 
 //
 func TestE2ESkopeo(t *testing.T) {
-	tryConfig(test.NewTestHelper(t), "e2e/skopeo.yaml", true, test.GetParams())
+	tryConfig(test.NewTestHelper(t),
+		"e2e/skopeo.yaml", 1, 0, true, test.GetParams())
 }
 
 //
@@ -64,7 +72,7 @@ func TestE2ESkopeoECR(t *testing.T) {
 	registries.SkipIfECRNotConfigured(t)
 	p := test.GetParams()
 	registries.RemoveECRRepo(t, p)
-	tryConfig(test.NewTestHelper(t), "e2e/skopeo-ecr.yaml", true, p)
+	tryConfig(test.NewTestHelper(t), "e2e/skopeo-ecr.yaml", 1, 0, true, p)
 	registries.RemoveECRRepo(t, p)
 }
 
@@ -73,12 +81,13 @@ func TestE2ESkopeoGCR(t *testing.T) {
 	registries.SkipIfGCRNotConfigured(t)
 	p := test.GetParams()
 	registries.RemoveGCRRepo(t, p)
-	tryConfig(test.NewTestHelper(t), "e2e/skopeo-gcr.yaml", true, p)
+	tryConfig(test.NewTestHelper(t), "e2e/skopeo-gcr.yaml", 1, 0, true, p)
 	registries.RemoveGCRRepo(t, p)
 }
 
 //
-func tryConfig(th *test.TestHelper, file string, verify bool, data interface{}) {
+func tryConfig(th *test.TestHelper, file string, ticks int, wait time.Duration,
+	verify bool, data interface{}) {
 
 	test.StackTraceDepth = 2
 	defer func() { test.StackTraceDepth = 1 }()
@@ -92,7 +101,7 @@ func tryConfig(th *test.TestHelper, file string, verify bool, data interface{}) 
 		defer os.Remove(dst)
 	}
 
-	th.AssertEqual(0, runDregsy(th, 1, 0, "-config="+dst))
+	th.AssertEqual(0, runDregsy(th, ticks, wait, "-config="+dst))
 
 	if !verify {
 		return
@@ -147,9 +156,10 @@ func runDregsy(th *test.TestHelper, ticks int, wait time.Duration,
 
 	var instance *sync.Sync
 
-	for i := 0; i < 10; i++ {
+	for i := 10; i > 0; i-- {
 		select {
 		case instance = <-testSync:
+			i = 0
 			break
 		default:
 			time.Sleep(time.Second)
@@ -173,7 +183,7 @@ func runDregsy(th *test.TestHelper, ticks int, wait time.Duration,
 		instance.Shutdown()
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 120; i++ {
 		select {
 		case <-testSync:
 			log.Info("TEST - dregsy stopped")
