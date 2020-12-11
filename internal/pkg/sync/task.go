@@ -134,9 +134,9 @@ func (t *Task) tooSoon() bool {
 func (t *Task) stopTicking() {
 	if t.ticker != nil {
 		t.ticker.Stop()
+		close(t.exit)
+		<-t.done
 	}
-	close(t.exit)
-	<-t.done
 	log.WithField("task", t.Name).Debug("task exited")
 }
 
