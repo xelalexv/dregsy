@@ -1,5 +1,8 @@
 # Changelog
 
+## `0.3.3`
+- fixed stopping of one-off tasks (issue #35)
+
 ## `0.3.2`
 - support for *Google Container Registry* (issue #30)
 - switched to `logrus` for logging (issue #32)
