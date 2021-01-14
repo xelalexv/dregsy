@@ -137,6 +137,8 @@ Note however that you either need to set environment variables `AWS_ACCESS_KEY_I
 
 If a source or target is a *Google Container Registry (GCR)*, `auth` may be omitted altogether. In this case either `GOOGLE_APPLICATION_CREDENTIALS` variable must be set (which is supposed to contain a path to a JSON file with credentials for a *GCP* service account), or *dregsy* must be run on a *GCE* instance with an appropriate service account attached. In case of *GCR*, `registry` must be specified as any of *GCR* addresses (i.e. `gcr.io`, `us.gcr.io`, `eu.gcr.io`, or `asia.gcr.io`), while the `from/to` mapping must include your *GCP* project name (i.e. `your-project-123/your-image`). Note that `GOOGLE_APPLICATION_CREDENTIALS`, if set, takes precedence even on a *GCE* instance.
 
+If you want to use *GCR* as the source for a public image, you can deactivate authentication all together by setting `auth` to `none`.
+
 ## Usage
 
 ```bash

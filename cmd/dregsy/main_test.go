@@ -62,6 +62,12 @@ func TestE2EDockerGCR(t *testing.T) {
 }
 
 //
+func TestE2EDockerGCRNoAuth(t *testing.T) {
+	tryConfig(test.NewTestHelper(t),
+		"e2e/docker-gcr-noauth.yaml", 1, 0, true, test.GetParams())
+}
+
+//
 func TestE2ESkopeo(t *testing.T) {
 	tryConfig(test.NewTestHelper(t),
 		"e2e/skopeo.yaml", 1, 0, true, test.GetParams())
@@ -83,6 +89,12 @@ func TestE2ESkopeoGCR(t *testing.T) {
 	registries.RemoveGCRRepo(t, p)
 	tryConfig(test.NewTestHelper(t), "e2e/skopeo-gcr.yaml", 1, 0, true, p)
 	registries.RemoveGCRRepo(t, p)
+}
+
+//
+func TestE2ESkopeoGCRNoAuth(t *testing.T) {
+	tryConfig(test.NewTestHelper(t),
+		"e2e/skopeo-gcr-noauth.yaml", 1, 0, true, test.GetParams())
 }
 
 //
