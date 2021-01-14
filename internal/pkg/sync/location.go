@@ -70,8 +70,12 @@ func (l *Location) validate() error {
 			l.Registry)
 	}
 
-	if l.IsGCR() {
+	if l.IsGCR() && l.Auth != "none" {
 		l.refresher = newGCRAuthRefresher(l)
+	}
+
+	if l.Auth == "none" {
+		l.Auth = ""
 	}
 
 	return nil
