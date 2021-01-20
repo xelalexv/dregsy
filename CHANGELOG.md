@@ -1,5 +1,8 @@
 # Changelog
 
+## `0.3.4`
+- allow to deactivate authentication for public images on *GCR* (issue #37)
+
 ## `0.3.3`
 - fixed stopping of one-off tasks (issue #35)
 
