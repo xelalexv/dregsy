@@ -14,13 +14,13 @@
 # limitations under the License.
 #
 
-FROM alpine:3.12.0@sha256:a15790640a6690aa1730c38cf0a440e2aa44aaca9b0e8931a9f2b0d7cc90fd65
+FROM alpine:3.13.1@sha256:3747d4eb5e7f0825d54c8e80452f1e245e24bd715972c919d189a62da97af2ae
 
 LABEL maintainer "vollschwitz@gmx.net"
 
 ARG binaries
 
-RUN apk --update add --no-cache skopeo=0.2.0-r1 ca-certificates
+RUN apk --update add --no-cache skopeo=1.2.1-r0 ca-certificates
 
 COPY ${binaries}/dregsy /usr/local/bin
 

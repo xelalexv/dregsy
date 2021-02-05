@@ -1,5 +1,8 @@
 # Changelog
 
+## `0.3.5`
+- upgraded to *Alpine* 3.13.1 & *Skopeo* 1.2.1 (issue #29)
+
 ## `0.3.4`
 - allow to deactivate authentication for public images on *GCR* (issue #37)
 
