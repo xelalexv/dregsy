@@ -165,6 +165,10 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig) error {
 //
 func (s *Sync) syncTask(t *Task) {
 
+    if t.MappingFile !=nil{
+        t.refreshMapping()
+    }
+
 	if t.tooSoon() {
 		log.WithField("task", t.Name).Info("task fired too soon, skipping")
 		return
