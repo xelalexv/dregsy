@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-FROM xelalex/dregsy:latest
+FROM xelalex/dregsy:latest-alpine
 
 # install & configure Go
 RUN apk add --no-cache go
@@ -28,10 +28,10 @@ RUN mkdir -p ${GOPATH}/src ${GOPATH}/bin ${GOPATH}/pkg ${GOCACHE}
 ARG USER=go
 ENV HOME /home/${USER}
 RUN apk add --update sudo
-RUN adduser -D ${USER} \
-	&& adduser ${USER} ping \
-    && echo "${USER} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/${USER} \
-    && chmod 0440 /etc/sudoers.d/${USER}
+RUN adduser -D ${USER} && \
+    adduser ${USER} ping && \
+    echo "${USER} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/${USER} && \
+    chmod 0440 /etc/sudoers.d/${USER}
 USER ${USER}
 
 WORKDIR ${GOPATH}

@@ -38,6 +38,8 @@ function synopsis {
 
     files=()
 
+    command -v gawk > /dev/null || echo "Note: proper help display requires gawk!"
+
     for file in ${MAKEFILE_LIST}; do
         if [[ "$(basename "${file}")" == "Makefile" ]]; then
             files+=( "../${file}" )
@@ -98,6 +100,53 @@ function apply_shell_expansion {
     declare delimiter="__apply_shell_expansion_delimiter__"
     declare command="cat <<${delimiter}"$'\n'"${data}"$'\n'"${delimiter}"
     eval "${command}"
+}
+
+#
+#
+#
+function registry_up {
+    docker run -d --rm -p 5000:5000 --name dregsy-test-registry registry:2
+}
+
+#
+#
+#
+function registry_down {
+    docker stop dregsy-test-registry
+}
+
+#
+#
+#
+function registry_restart {
+    registry_down
+    registry_up
+}
+
+#
+# $1    test image variant (`alpine` or `ubuntu`)
+#
+function run_tests {
+
+    echo -e "\ntesting using $1-based image:"
+
+    docker run --privileged --network host --rm  \
+        -v "${ROOT}:/go/src/${REPO}" -w "/go/src/${REPO}" \
+        -v "${ROOT}/${BINARIES}:/go/bin" \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        ${CACHE_VOLS} ${GCP_CREDS} \
+        -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 \
+        -e LOG_LEVEL=debug -e LOG_FORMAT=text -e LOG_FORCE_COLORS=true \
+        --env-file <(sed -E 's/\ +=\ +/=/g' "${ROOT}/.makerc") \
+        "xelalex/${REPO}-tests-$1" sh -c "\
+            go test ${TEST_OPTS} \
+                -coverpkg=./... -coverprofile=${BUILD_OUTPUT}/coverage.out \
+                -covermode=count ./... && \
+            go tool cover -html=${BUILD_OUTPUT}/coverage.out \
+                -o ${BUILD_OUTPUT}/coverage-$1.html"
+
+    echo -e "\ncoverage report is in ${BUILD_OUTPUT}/coverage-$1.html\n"
 }
 
 #

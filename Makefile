@@ -17,15 +17,16 @@
 .DEFAULT_GOAL := help
 SHELL = /bin/bash
 
-REPO=dregsy
-DREGSY_VERSION=$$(git describe --always --tag --dirty)
+REPO = dregsy
+DREGSY_VERSION = $$(git describe --always --tag --dirty)
 
-BUILD_OUTPUT=_build
-BINARIES=$(BUILD_OUTPUT)/bin
-ISOLATED_PKG=$(BUILD_OUTPUT)/pkg
-ISOLATED_CACHE=$(BUILD_OUTPUT)/cache
+ROOT = $(shell pwd)
+BUILD_OUTPUT =_build
+BINARIES = $(BUILD_OUTPUT)/bin
+ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
+ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 
-GO_IMAGE=golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db9629a724af8a332fe54e3f7b3
+GO_IMAGE = golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db9629a724af8a332fe54e3f7b3
 
 ## makerc
 # You need to set the following parameters in configuration file ${DIM}.makerc${NRM}, with every line
@@ -82,20 +83,20 @@ else
 endif
 
 ifeq ($(MAKECMDGOALS),release)
-	ISOLATED=y
+	ISOLATED = y
 endif
 
 ISOLATED ?=
 ifeq ($(ISOLATED),y)
-    CACHE_VOLS=-v $$(pwd)/$(ISOLATED_PKG):/go/pkg -v $$(pwd)/$(ISOLATED_CACHE):/.cache
+    CACHE_VOLS = -v $(ROOT)/$(ISOLATED_PKG):/go/pkg -v $(ROOT)/$(ISOLATED_CACHE):/.cache
 else
-    CACHE_VOLS=-v $(GOPATH)/pkg:/go/pkg -v /home/$(USER)/.cache:/.cache
+    CACHE_VOLS = -v $(GOPATH)/pkg:/go/pkg -v /home/$(USER)/.cache:/.cache
 endif
 
 ifeq ($(GCP_CREDENTIALS),)
-	GCP_CREDS=
+	GCP_CREDS =
 else
-	GCP_CREDS=-v $(GCP_CREDENTIALS):/var/run/secrets/gcp-creds.json -e GOOGLE_APPLICATION_CREDENTIALS=/var/run/secrets/gcp-creds.json
+	GCP_CREDS = -v $(GCP_CREDENTIALS):/var/run/secrets/gcp-creds.json -e GOOGLE_APPLICATION_CREDENTIALS=/var/run/secrets/gcp-creds.json
 endif
 
 export
@@ -111,7 +112,7 @@ help:
 
 
 .PHONY: release
-release: clean rmi dregsy imgdregsy imgtests registryrestart tests registrydown
+release: clean rmi dregsy imgdregsy imgtests tests registrydown
 #	clean, do an isolated build, create container images, and test
 #
 
@@ -131,72 +132,78 @@ dregsy: prep
 
 .PHONY: imgdregsy
 imgdregsy:
-#	build the ${ITL}dregsy${NRM} container image; assumes binary was built
+#	build the ${ITL}dregsy${NRM} container images (Alpine and Ubuntu based);
+#	assumes binary was built
 #
-	docker build -t xelalex/$(REPO) -f ./hack/dregsy.Dockerfile \
-		--build-arg binaries=$(BINARIES) .
+	echo -e "\nBuilding Alpine-based image...\n"
+	docker build -t xelalex/$(REPO):latest-alpine \
+		-f ./hack/dregsy.alpine.Dockerfile --build-arg binaries=$(BINARIES) .
+	# for historical reasons, the `xelalex/dregsy` image is the Alpine image
+	docker tag xelalex/$(REPO):latest-alpine xelalex/$(REPO):latest
+	echo -e "\n\nBuilding Ubuntu-based image...\n"
+	docker build -t xelalex/$(REPO):latest-ubuntu \
+		-f ./hack/dregsy.ubuntu.Dockerfile --build-arg binaries=$(BINARIES) .
+	echo -e "\nDone\n"
 
 
 .PHONY: imgtests
 imgtests:
-#	build the container image for running tests; assumes ${ITL}dregsy${NRM} image was built
+#	build the container images for running tests (Alpine and Ubuntu based);
+#	assumes ${ITL}dregsy-...${NRM} images were built
 #
-	docker build -t xelalex/$(REPO)-tests -f ./hack/tests.Dockerfile .
+	echo -e "\nBuilding Alpine-based test image...\n"
+	docker build -t xelalex/$(REPO)-tests-alpine \
+		-f ./hack/tests.alpine.Dockerfile .
+	echo -e "\n\nBuilding Ubuntu-based test image...\n"
+	docker build -t xelalex/$(REPO)-tests-ubuntu \
+		-f ./hack/tests.ubuntu.Dockerfile .
+	echo -e "\nDone\n"
 
 
 .PHONY: rmi
 rmi:
 #	remove the ${ITL}dregsy${NRM} and testing container images
 #
-	docker rmi -f xelalex/$(REPO)
-	docker rmi -f xelalex/$(REPO)-tests
+	docker rmi -f xelalex/$(REPO):latest
+	docker rmi -f xelalex/$(REPO):latest-alpine
+	docker rmi -f xelalex/$(REPO):latest-ubuntu
+	docker rmi -f xelalex/$(REPO)-tests-alpine
+	docker rmi -f xelalex/$(REPO)-tests-ubuntu
 
 
 .PHONY: tests
 tests: prep
-#	run tests; assumes tests image was built and local ${ITL}Docker${NRM} registry running
-#	on localhost:5000 (start with ${DIM}make registryup${NRM});
+#	run tests; assumes test images were built; local ${ITL}Docker${NRM} registry gets
+#	(re-)started on localhost:5000
 #
 ifeq (,$(wildcard .makerc))
 	$(warning ***** Missing .makerc! Some tests may be skipped or fail!)
 endif
-	@echo -e "\ntests:"
-	docker run --privileged --network host --rm  \
-		-v $(shell pwd):/go/src/$(REPO) -w /go/src/$(REPO) \
-		-v $(shell pwd)/$(BINARIES):/go/bin \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		$(CACHE_VOLS) \
-		$(GCP_CREDS) \
-		-e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 \
-		-e LOG_LEVEL=debug -e LOG_FORMAT=text -e LOG_FORCE_COLORS=true \
-		--env-file <(sed -E 's/\ +=\ +/=/g' .makerc) \
-		xelalex/$(REPO)-tests sh -c "\
-			go test $(TEST_OPTS) \
-				-coverpkg=./... -coverprofile=$(BUILD_OUTPUT)/coverage.out \
-				-covermode=count ./... && \
-			go tool cover -html=$(BUILD_OUTPUT)/coverage.out \
-				-o $(BUILD_OUTPUT)/coverage.html"
-	@echo -e "\ncoverage report is in $(BUILD_OUTPUT)/coverage.html\n"
+	$(call utils, registry_restart)
+	$(call utils, run_tests alpine)
+	$(call utils, registry_restart)
+	$(call utils, run_tests ubuntu)
 
 
 .PHONY: registryup
 registryup:
 #	start local ${ITL}Docker${NRM} registry for running tests
 #
-	docker run -d --rm -p 5000:5000 --name dregsy-test-registry registry:2
+	$(call utils, registry_up)
 
 
 .PHONY: registrydown
 registrydown:
 #	stop local ${ITL}Docker${NRM} registry
 #
-	docker stop dregsy-test-registry || true
+	$(call utils, registry_down) || true
 
 
 .PHONY: registryrestart
-registryrestart: registrydown registryup
+registryrestart:
 #	restart local ${ITL}Docker${NRM} registry
 #
+	$(call utils, registry_restart)
 
 
 .PHONY: clean
