@@ -161,7 +161,9 @@ Logging behavior can be changed with these environment variables:
 If you run *dregsy* natively on your system, with relay type `docker`, the *Docker* daemon of your system will be used as the relay for all sync tasks, so all synced images will wind up in the *Docker* storage of that daemon.
 
 ### Running Inside a *Docker* Container
-You can use the [*dregsy* image on Dockerhub](https://hub.docker.com/r/xelalex/dregsy/) for running *dregsy* containerized.
+You can use the [*dregsy* image on Dockerhub](https://hub.docker.com/r/xelalex/dregsy/) for running *dregsy* containerized. There are two variants: one is based on *Alpine*, and suitable when you just want to run *dregsy*. The other variant is based on *Ubuntu*. It's somewhat larger, but may be better suited as a base when you want to extend the *dregsy* image. It's often easier to add things there than on *Alpine*, e.g. the *AWS* command line interface.
+
+With each release, three tags get published: `{version}-ubuntu`, `{version}-alpine`, and `{version}`, with the latter two referring to the same image. The same applies for `latest`. The *Skopeo* versions contained in the two variants may not always be exactly the same, but should only differ in patch level.
 
 #### With `skopeo` relay
 The image includes the `skopeo` binary, so all that's needed is:

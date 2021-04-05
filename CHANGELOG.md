@@ -1,5 +1,8 @@
 # Changelog
 
+## `0.3.6`
+- added container image based on *Ubuntu 20.04* (issue #47)
+
 ## `0.3.5`
 - upgraded to *Alpine* 3.13.1 & *Skopeo* 1.2.1 (issue #29)
 
