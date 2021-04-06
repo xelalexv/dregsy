@@ -19,9 +19,11 @@ package sync
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"time"
 
+    "gopkg.in/yaml.v2"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -31,18 +33,25 @@ import (
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
 )
 
+type MappingList struct {
+    Mappings []*Mapping `mappings`
+}
+
 //
 type Task struct {
 	Name     string     `yaml:"name"`
 	Interval int        `yaml:"interval"`
 	Source   *Location  `yaml:"source"`
 	Target   *Location  `yaml:"target"`
+	MappingFile *string  `yaml:"mappings_file"`
 	Mappings []*Mapping `yaml:"mappings"`
 	Verbose  bool       `yaml:"verbose"`
+
 	//
 	ticker   *time.Ticker
 	lastTick time.Time
 	failed   bool
+
 	//
 	exit chan bool
 	done chan bool
@@ -74,15 +83,60 @@ func (t *Task) validate() error {
 			"target registry in task '%s' invalid: %v", t.Name, err)
 	}
 
-	for _, m := range t.Mappings {
-		if err := m.validate(); err != nil {
-			return err
-		}
-		m.From = normalizePath(m.From)
-		m.To = normalizePath(m.To)
-	}
+
+    if t.MappingFile != nil {
+        err := t.refreshMapping()
+        if err != nil {
+            return fmt.Errorf("failed to procure mappings", t.Name, err)
+        }
+    } else{
+        t.validateMappings()
+    }
 
 	return nil
+}
+
+func(t *Task) validateMappings() error {
+    for _, m := range t.Mappings {
+        if err := m.validate(); err != nil {
+
+            return fmt.Errorf("error parsing mappings '%s': %v", m.From, err)
+        }
+        m.From = normalizePath(m.From)
+        m.To = normalizePath(m.To)
+    }
+    return nil
+}
+
+func(t *Task) refreshMapping() error {
+
+    logger := log.WithField("task", t.Name)
+
+    mappingFile := *t.MappingFile
+
+    data, err := ioutil.ReadFile(mappingFile)
+
+    if err != nil{
+        return fmt.Errorf("issue with mapping file  '%s': %v", mappingFile, err)
+    }
+
+    maplist := &MappingList{}
+
+    if err = yaml.Unmarshal(data, maplist); err != nil {
+        return fmt.Errorf("error parsing mappings config file '%s': %v", mappingFile, err)
+    }
+
+    t.Mappings = make([]*Mapping, len(maplist.Mappings))
+
+    //t.Mappings = maplist.Mappings
+
+    copy(t.Mappings, maplist.Mappings)
+
+    logger.Info("refreshed task list from file '%s'", mappingFile)
+
+    t.validateMappings()
+
+    return nil
 }
 
 //
