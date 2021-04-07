@@ -1,9 +1,5 @@
 # *dregsy* - Docker Registry Sync
 
-## TODO
-- make sure token is used wherever possible (index lister and push/pull on all registries that are not GCR or ECR are still using user/pass)
-
-
 ## Synopsis
 *dregsy* lets you sync *Docker* images between registries, public or private. Several sync tasks can be defined, as one-off or periodic tasks (see *Configuration* section). An image is synced by using a *sync relay*. Currently, this can be either [*Skopeo*](https://github.com/containers/skopeo) or a local *Docker* daemon. When using the latter, the image is first pulled from the source, then tagged for the destination, and finally pushed there. *Skopeo* in contrast, can directly transfer an image from source to destination, which makes it the preferred choice.
 
