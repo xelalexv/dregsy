@@ -40,6 +40,7 @@ type SyncConfig struct {
 	Skopeo     *skopeo.RelayConfig `yaml:"skopeo"`
 	DockerHost string              `yaml:"dockerhost"`  // DEPRECATED
 	APIVersion string              `yaml:"api-version"` // DEPRECATED
+	Lister     *ListerConfig       `yaml:"lister"`
 	Tasks      []*Task             `yaml:"tasks"`
 }
 
@@ -96,11 +97,24 @@ func (c *SyncConfig) validate() error {
 			c.Relay, docker.RelayID, skopeo.RelayID)
 	}
 
+	if err := c.Lister.validate(); err != nil {
+		return err
+	}
+
 	for _, t := range c.Tasks {
 		if err := t.validate(); err != nil {
 			return err
 		}
+		if c.Lister != nil && t.repoList != nil {
+			if c.Lister.MaxItems != 0 {
+				t.repoList.SetMaxItems(c.Lister.MaxItems)
+			}
+			if c.Lister.CacheDuration != 0 {
+				t.repoList.SetCacheDuration(c.Lister.CacheDuration)
+			}
+		}
 	}
+
 	return nil
 }
 
@@ -124,4 +138,33 @@ func LoadConfig(file string) (*SyncConfig, error) {
 	}
 
 	return config, nil
+}
+
+//
+type ListerConfig struct {
+	MaxItems      int           `yaml:"maxItems"`
+	CacheDuration time.Duration `yaml:"cacheDuration"`
+}
+
+//
+func (c *ListerConfig) validate() error {
+
+	if c == nil {
+		return nil
+	}
+
+	if c.MaxItems < 0 {
+		log.Warn(
+			"lister items set to unlimited, may cause excessive network traffic")
+	} else {
+		log.Debugf("lister max items set to %d", c.MaxItems)
+	}
+
+	if c.CacheDuration < 0 {
+		log.Warn("lister cache turned off, " +
+			"may cause excessive network traffic and/or rate limits")
+	}
+	log.Debugf("lister cache duration set to %v", c.CacheDuration)
+
+	return nil
 }

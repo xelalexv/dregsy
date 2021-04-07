@@ -125,6 +125,24 @@ function registry_restart {
 }
 
 #
+# $...  reference patterns to filter on
+#
+function remove_test_images {
+
+    local list=()
+    for ref in "$@"; do
+        readarray -d ' ' -t -O ${#list[@]} list \
+            < <(docker images -q --filter=reference="${ref}")
+    done
+
+    readarray -t list < <(echo -n "${list[@]}" | sort | uniq)
+
+    for img in "${list[@]}"; do
+        docker rmi -f "${img}"
+    done
+}
+
+#
 # $1    test image variant (`alpine` or `ubuntu`)
 #
 function run_tests {

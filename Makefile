@@ -40,10 +40,11 @@ GO_IMAGE = golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db96
 #	${ITL}DREGSY_TEST_ECR_REPO${NRM} 		the repo to use within the ECR instance;
 #					defaults to ${DIM}dregsy/test${NRM}
 #
-#	${ITL}AWS_ACCESS_KEY_ID${NRM}	credentials for AWS account in which ECR instance for testing
-#	${ITL}AWS_SECRET_ACCESS_KEY${NRM}	is located; the user associated with these credentials needs to
-#				have sufficient IAM permissions for creating an ECR instance,
-#				pulling & pushing from/to it, and deleting it
+#	${ITL}AWS_ACCESS_KEY_ID${NRM}		credentials for AWS account in which ECR instance for
+#	${ITL}AWS_SECRET_ACCESS_KEY${NRM}		testing is located; the user associated with these
+#					credentials needs to have sufficient IAM permissions for
+#					creating an ECR instance, pulling & pushing from/to it,
+#					and deleting it
 #
 #	If any of the above settings without a default is missing, ECR tests are skipped!
 #
@@ -51,8 +52,8 @@ GO_IMAGE = golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db96
 #	${ITL}DREGSY_TEST_GCR_PROJECT${NRM} 	the GCP project ID to use
 #	${ITL}DREGSY_TEST_GCR_IMAGE${NRM} 		the image to use; defaults to ${DIM}dregsy/test${NRM}
 #
-#	${ITL}GCP_CREDENTIALS${NRM}		full path to credentials file for GCP service account with
-#				which to test GCR
+#	${ITL}GCP_CREDENTIALS${NRM}			full path to credentials file for GCP service account
+#					with which to test GCR
 #
 #	If any of the above settings without a default is missing, GCR tests are skipped!
 #
@@ -69,6 +70,9 @@ GO_IMAGE = golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db96
 #			the configured build folder are used. These folders are removed when
 #			running ${DIM}make clean${NRM}. That way you can force a clean build/test, where all
 #			dependencies are retrieved & built inside the container.
+#
+#	${ITL}TEST_ALPINE=n${NRM}	when using this with the test target, tests will not be performed
+#	${ITL}TEST_UBUNTU=n${NRM}	for the respective image (${ITL}Alpine${NRM} or ${ITL}Ubuntu${NRM} based)
 #
 
 VERBOSE ?=
@@ -99,6 +103,9 @@ else
 	GCP_CREDS = -v $(GCP_CREDENTIALS):/var/run/secrets/gcp-creds.json -e GOOGLE_APPLICATION_CREDENTIALS=/var/run/secrets/gcp-creds.json
 endif
 
+TEST_ALPINE ?= y
+TEST_UBUNTU ?= y
+
 export
 
 #
@@ -112,7 +119,7 @@ help:
 
 
 .PHONY: release
-release: clean rmi dregsy imgdregsy imgtests tests registrydown
+release: clean rmi rmitest dregsy imgdregsy imgtests tests registrydown
 #	clean, do an isolated build, create container images, and test
 #
 
@@ -171,6 +178,13 @@ rmi:
 	docker rmi -f xelalex/$(REPO)-tests-ubuntu
 
 
+.PHONY: rmitest
+rmitest:
+#	remove all test-related container images
+#
+	$(call utils, remove_test_images "127.0.0.1:5000/*/*/*/*" "*/*/*/busybox")
+
+
 .PHONY: tests
 tests: prep
 #	run tests; assumes test images were built; local ${ITL}Docker${NRM} registry gets
@@ -179,10 +193,14 @@ tests: prep
 ifeq (,$(wildcard .makerc))
 	$(warning ***** Missing .makerc! Some tests may be skipped or fail!)
 endif
+ifeq ($(TEST_ALPINE),y)
 	$(call utils, registry_restart)
 	$(call utils, run_tests alpine)
+endif
+ifeq ($(TEST_UBUNTU),y)
 	$(call utils, registry_restart)
 	$(call utils, run_tests ubuntu)
+endif
 
 
 .PHONY: registryup

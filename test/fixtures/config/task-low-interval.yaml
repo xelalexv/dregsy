@@ -1,4 +1,4 @@
 relay: skopeo
 tasks:
-  - name: test
-    interval: 1
+- name: test
+  interval: 1

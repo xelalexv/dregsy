@@ -1,7 +1,7 @@
 relay: skopeo
 tasks:
-  - name: test
-    interval: 60
-    source:
-      registry: registry.hub.docker.com
-      auth-refresh: 10h
+- name: test
+  interval: 60
+  source:
+    registry: registry.hub.docker.com
+    auth-refresh: 10h

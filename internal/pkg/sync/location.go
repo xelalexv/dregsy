@@ -19,24 +19,25 @@ package sync
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/xelalexv/dregsy/internal/pkg/auth"
+	"github.com/xelalexv/dregsy/internal/pkg/registry"
 )
 
 //
-type authRefresher interface {
-	refresh() error
-}
-
-//
 type Location struct {
-	Registry      string         `yaml:"registry"`
-	Auth          string         `yaml:"auth"`
-	SkipTLSVerify bool           `yaml:"skip-tls-verify"`
-	AuthRefresh   *time.Duration `yaml:"auth-refresh"`
+	Registry      string            `yaml:"registry"`
+	Auth          string            `yaml:"auth"`
+	SkipTLSVerify bool              `yaml:"skip-tls-verify"`
+	AuthRefresh   *time.Duration    `yaml:"auth-refresh"`
+	ListerConfig  map[string]string `yaml:"lister"`
+	ListerType    registry.ListSourceType
 	//
-	refresher authRefresher
+	creds *auth.Credentials
 }
 
 //
@@ -48,6 +49,34 @@ func (l *Location) validate() error {
 
 	if l.Registry == "" {
 		return errors.New("registry not set")
+	}
+
+	if l.ListerConfig != nil {
+		if typ, ok := l.ListerConfig["type"]; ok {
+			l.ListerType = registry.ListSourceType(typ)
+			if !l.ListerType.IsValid() {
+				return fmt.Errorf("invalid lister type: %s", l.ListerType)
+			}
+		} else {
+			return fmt.Errorf("no lister type set")
+		}
+	}
+
+	disableAuth := l.Auth == "none"
+	if disableAuth {
+		l.Auth = ""
+	}
+
+	// move Auth into credentials
+	if l.Auth != "" {
+		crd, err := auth.NewCredentialsFromAuth(l.Auth)
+		if err != nil {
+			return fmt.Errorf("invalid Auth: %v", err)
+		}
+		l.creds = crd
+		l.Auth = ""
+	} else {
+		l.creds = &auth.Credentials{}
 	}
 
 	var interval time.Duration
@@ -63,28 +92,51 @@ func (l *Location) validate() error {
 	}
 
 	if l.IsECR() {
-		l.refresher = newECRAuthRefresher(l, interval)
+		_, region, account := l.GetECR()
+		l.creds.SetRefresher(auth.NewECRAuthRefresher(account, region, interval))
 	} else if interval > 0 {
 		return fmt.Errorf(
 			"'%s' wants authentication refresh, but is not an ECR registry",
 			l.Registry)
 	}
 
-	if l.IsGCR() && l.Auth != "none" {
-		l.refresher = newGCRAuthRefresher(l)
-	}
-
-	if l.Auth == "none" {
-		l.Auth = ""
+	if l.IsGCR() && !disableAuth {
+		l.creds.SetRefresher(auth.NewGCRAuthRefresher())
 	}
 
 	return nil
 }
 
 //
+func (l *Location) GetAuth() string {
+	if l.creds != nil {
+		return l.creds.Auth()
+	}
+	log.WithField("registry", l.Registry).Debug("no credentials")
+	return ""
+}
+
+//
 func (l *Location) RefreshAuth() error {
-	if l.refresher == nil {
+	if l.creds == nil {
 		return nil
 	}
-	return l.refresher.refresh()
+	log.WithField("registry", l.Registry).Info("refreshing credentials")
+	return l.creds.Refresh()
+}
+
+//
+func (l *Location) IsECR() bool {
+	ecr, _, _ := l.GetECR()
+	return ecr
+}
+
+//
+func (l *Location) GetECR() (ecr bool, region, account string) {
+	return registry.IsECR(l.Registry)
+}
+
+//
+func (l *Location) IsGCR() bool {
+	return strings.HasSuffix(l.Registry, ".gcr.io")
 }

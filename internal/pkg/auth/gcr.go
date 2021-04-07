@@ -14,51 +14,39 @@
 	limitations under the License.
 */
 
-package sync
+package auth
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-
-	log "github.com/sirupsen/logrus"
 )
 
 //
 const gcp_metadata_url = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
 //
-func (l *Location) IsGCR() bool {
-	return strings.HasSuffix(l.Registry, ".gcr.io")
-}
-
-//
-func newGCRAuthRefresher(l *Location) *gcrAuthRefresher {
-	return &gcrAuthRefresher{loc: l}
+func NewGCRAuthRefresher() Refresher {
+	return &gcrAuthRefresher{}
 }
 
 //
 type gcrAuthRefresher struct {
-	loc    *Location
 	expiry time.Time
 }
 
 //
-func (rf *gcrAuthRefresher) refresh() error {
+func (rf *gcrAuthRefresher) Refresh(creds *Credentials) error {
 
-	if rf.loc == nil || time.Now().Before(rf.expiry) {
+	if time.Now().Before(rf.expiry) {
 		return nil
 	}
-
-	log.WithField("registry", rf.loc.Registry).Info("refreshing credentials")
 
 	var authToken string
 	var expiry time.Time
@@ -82,8 +70,9 @@ func (rf *gcrAuthRefresher) refresh() error {
 		return fmt.Errorf("no auth token received")
 	}
 
-	rf.loc.Auth = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf(
-		`{"username": "oauth2accesstoken", "password": "%s"}`, authToken)))
+	creds.username = "oauth2accesstoken"
+	creds.password = authToken
+	creds.auther = BasicAuthJSON
 	rf.expiry = expiry
 
 	return nil

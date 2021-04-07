@@ -33,14 +33,14 @@ import (
 
 //
 func TestE2EOneoff(t *testing.T) {
-	tryConfig(test.NewTestHelper(t),
-		"e2e/oneoff.yaml", 0, 0, true, test.GetParams())
+	tryConfig(test.NewTestHelper(t), "e2e/base/oneoff.yaml",
+		0, 0, true, nil, test.GetParams())
 }
 
 //
 func TestE2EDocker(t *testing.T) {
-	tryConfig(test.NewTestHelper(t),
-		"e2e/docker.yaml", 1, 0, true, test.GetParams())
+	tryConfig(test.NewTestHelper(t), "e2e/base/docker.yaml",
+		1, 0, true, nil, test.GetParams())
 }
 
 //
@@ -48,7 +48,8 @@ func TestE2EDockerECR(t *testing.T) {
 	registries.SkipIfECRNotConfigured(t)
 	p := test.GetParams()
 	registries.RemoveECRRepo(t, p)
-	tryConfig(test.NewTestHelper(t), "e2e/docker-ecr.yaml", 1, 0, true, p)
+	tryConfig(test.NewTestHelper(t), "e2e/base/docker-ecr.yaml",
+		1, 0, true, nil, p)
 	registries.RemoveECRRepo(t, p)
 }
 
@@ -57,20 +58,21 @@ func TestE2EDockerGCR(t *testing.T) {
 	registries.SkipIfGCRNotConfigured(t)
 	p := test.GetParams()
 	registries.RemoveGCRRepo(t, p)
-	tryConfig(test.NewTestHelper(t), "e2e/docker-gcr.yaml", 1, 0, true, p)
+	tryConfig(test.NewTestHelper(t), "e2e/base/docker-gcr.yaml",
+		1, 0, true, nil, p)
 	registries.RemoveGCRRepo(t, p)
 }
 
 //
 func TestE2EDockerGCRNoAuth(t *testing.T) {
-	tryConfig(test.NewTestHelper(t),
-		"e2e/docker-gcr-noauth.yaml", 1, 0, true, test.GetParams())
+	tryConfig(test.NewTestHelper(t), "e2e/base/docker-gcr-noauth.yaml",
+		1, 0, true, nil, test.GetParams())
 }
 
 //
 func TestE2ESkopeo(t *testing.T) {
-	tryConfig(test.NewTestHelper(t),
-		"e2e/skopeo.yaml", 1, 0, true, test.GetParams())
+	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo.yaml",
+		1, 0, true, nil, test.GetParams())
 }
 
 //
@@ -78,7 +80,8 @@ func TestE2ESkopeoECR(t *testing.T) {
 	registries.SkipIfECRNotConfigured(t)
 	p := test.GetParams()
 	registries.RemoveECRRepo(t, p)
-	tryConfig(test.NewTestHelper(t), "e2e/skopeo-ecr.yaml", 1, 0, true, p)
+	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-ecr.yaml",
+		1, 0, true, nil, p)
 	registries.RemoveECRRepo(t, p)
 }
 
@@ -87,19 +90,100 @@ func TestE2ESkopeoGCR(t *testing.T) {
 	registries.SkipIfGCRNotConfigured(t)
 	p := test.GetParams()
 	registries.RemoveGCRRepo(t, p)
-	tryConfig(test.NewTestHelper(t), "e2e/skopeo-gcr.yaml", 1, 0, true, p)
+	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-gcr.yaml",
+		1, 0, true, nil, p)
 	registries.RemoveGCRRepo(t, p)
 }
 
 //
 func TestE2ESkopeoGCRNoAuth(t *testing.T) {
-	tryConfig(test.NewTestHelper(t),
-		"e2e/skopeo-gcr-noauth.yaml", 1, 0, true, test.GetParams())
+	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-gcr-noauth.yaml",
+		1, 0, true, nil, test.GetParams())
+}
+
+//
+func TestE2EDockerMappingDockerhub(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-dockerhub.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-docker/dh/xelalex/dregsy-dummy-public":  {"latest"},
+			"mapping-docker/dh/xelalex/dregsy-dummy-private": {"latest"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2EDockerMappingLocal(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-local.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-docker/dh-copy/xelalex/dregsy-dummy-public":  {"latest"},
+			"mapping-docker/dh-copy/xelalex/dregsy-dummy-private": {"latest"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2EDockerMappingDockerhubSearch(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-dh-search.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-docker/dh/other-jenkins/jnlp-slave": {"latest"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2EDockerMappingECR(t *testing.T) {
+	registries.SkipIfECRNotConfigured(t)
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-ecr.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-docker/ecr/kubika/brucket":       {"v0.0.1"},
+			"mapping-docker/ecr/kubika/brucket-shell": {"v0.0.1"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2ESkopeoMappingDockerhub(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/skopeo-dockerhub.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-skopeo/dh/xelalex/dregsy-dummy-public":  {"latest"},
+			"mapping-skopeo/dh/xelalex/dregsy-dummy-private": {"latest"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2ESkopeoMappingLocal(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/skopeo-local.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-skopeo/dh-copy/xelalex/dregsy-dummy-public":  {"latest"},
+			"mapping-skopeo/dh-copy/xelalex/dregsy-dummy-private": {"latest"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2ESkopeoMappingDockerhubSearch(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/skopeo-dh-search.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-skopeo/dh/other-jenkins/jnlp-slave": {"latest"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2ESkopeoMappingECR(t *testing.T) {
+	registries.SkipIfECRNotConfigured(t)
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/skopeo-ecr.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-skopeo/ecr/kubika/brucket":       {"v0.0.1"},
+			"mapping-skopeo/ecr/kubika/brucket-shell": {"v0.0.1"},
+		},
+		test.GetParams())
 }
 
 //
 func tryConfig(th *test.TestHelper, file string, ticks int, wait time.Duration,
-	verify bool, data interface{}) {
+	verify bool, expectations map[string][]string, data interface{}) {
 
 	test.StackTraceDepth = 2
 	defer func() { test.StackTraceDepth = 1 }()
@@ -123,12 +207,44 @@ func tryConfig(th *test.TestHelper, file string, ticks int, wait time.Duration,
 	c, err := sync.LoadConfig(dst)
 	th.AssertNoError(err)
 
+	if expectations != nil {
+		validateAgainstExpectations(th, c, expectations)
+	} else {
+		validateAgainstTaskMapping(th, c)
+	}
+}
+
+//
+func validateAgainstExpectations(th *test.TestHelper, c *sync.SyncConfig,
+	expectations map[string][]string) {
+
+	if len(c.Tasks) == 0 {
+		return
+	}
+
+	t := c.Tasks[0]
+	th.AssertNoError(t.Target.RefreshAuth())
+
+	for eRef, eTags := range expectations {
+		ref := fmt.Sprintf("%s/%s", t.Target.Registry, eRef)
+		tags, err := skopeo.ListAllTags(ref,
+			skopeo.DecodeJSONAuth(t.Target.GetAuth()),
+			"", t.Target.SkipTLSVerify)
+		th.AssertNoError(err)
+		th.AssertEquivalentSlices(eTags, tags)
+	}
+}
+
+//
+func validateAgainstTaskMapping(th *test.TestHelper, c *sync.SyncConfig) {
+
 	for _, t := range c.Tasks {
+		th.AssertNoError(t.Target.RefreshAuth())
 		for _, m := range t.Mappings {
 			ref := fmt.Sprintf("%s%s", t.Target.Registry, m.To)
-			th.AssertNoError(t.Target.RefreshAuth())
 			tags, err := skopeo.ListAllTags(ref,
-				skopeo.DecodeJSONAuth(t.Target.Auth), "", t.Target.SkipTLSVerify)
+				skopeo.DecodeJSONAuth(t.Target.GetAuth()),
+				"", t.Target.SkipTLSVerify)
 			th.AssertNoError(err)
 			th.AssertEquivalentSlices(m.Tags, tags)
 		}

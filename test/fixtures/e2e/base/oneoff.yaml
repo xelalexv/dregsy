@@ -1,25 +1,20 @@
 relay: docker
 
 docker:
-  dockerhost: unix:///var/run/docker.sock
+  dockerhost: {{ .DockerHost }}
   api-version: 1.24
-
-lister:
-  maxItems: 50
-  cacheDuration: 30m
 
 tasks:
 - name: test-docker
-  interval: 30
   verbose: true
   source:
     registry: registry.hub.docker.com
   target:
     registry: 127.0.0.1:5000
-    auth: eyJ1c2VybmFtZSI6ICJhbm9ueW1vdXMiLCAicGFzc3dvcmQiOiAiYW5vbnltb3VzIn0K
+    auth: {{ .LocalAuth }}
     # not actually supported for Docker relay, but need this for validation
     skip-tls-verify: true
   mappings:
   - from: library/busybox
-    to: docker/library/busybox
-    tags: ['1.29.2', '1.29.3', 'latest']
+    to: base-docker/oneoff/busybox
+    tags: ['latest']

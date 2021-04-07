@@ -1,0 +1,20 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+  api-version: 1.24
+
+tasks:
+- name: test-local # depends on results of docker-dockerhub test
+  verbose: true
+  source:
+    registry: 127.0.0.1:5000
+    skip-tls-verify: true
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: regex:mapping-docker/dh/xelalex/dregsy-dummy.*
+    to: regex:mapping-docker/dh/,mapping-docker/dh-copy/

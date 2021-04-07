@@ -1,5 +1,8 @@
 # *dregsy* - Docker Registry Sync
 
+## TODO
+- make sure token is used wherever possible (index lister and push/pull on all registries that are not GCR or ECR are still using user/pass)
+
 
 ## Synopsis
 *dregsy* lets you sync *Docker* images between registries, public or private. Several sync tasks can be defined, as one-off or periodic tasks (see *Configuration* section). An image is synced by using a *sync relay*. Currently, this can be either [*Skopeo*](https://github.com/containers/skopeo) or a local *Docker* daemon. When using the latter, the image is first pulled from the source, then tagged for the destination, and finally pushed there. *Skopeo* in contrast, can directly transfer an image from source to destination, which makes it the preferred choice.
@@ -26,6 +29,15 @@ docker:
   dockerhost: unix:///var/run/docker.sock
   # Docker API version to use, defaults to 1.24
   api-version: 1.24
+
+# settings for image matching (see below)
+lister:
+  # maximum number of repositories to list, set to -1 for no limit, defaults to 100
+  maxItems: 100
+  # for how long a repository list will be re-used before retrieving again;
+  # specify as a Go duration value ('s', 'm', or 'h'), set to -1 for not caching,
+  # defaults to 1h
+  cacheDuration: 1h
 
 # list of sync tasks
 tasks:
@@ -60,8 +72,10 @@ tasks:
     # 'mappings' is a list of 'from':'to' pairs that define mappings of image
     # paths in the source registry to paths in the destination; 'from' is
     # required, while 'to' can be dropped if the path should remain the same as
-    # 'from'. Additionally, the tags being synced for a mapping can be limited
-    # by providing a 'tags' list. When omitted, all image tags are synced.
+    # 'from'. Regular expressions are supported in both fields (read on below
+    # for more details). Additionally, the tags being synced for a mapping can
+    # be limited by providing a 'tags' list. When omitted, all image tags are
+    # synced.
     mappings:
       - from: test/image
         to: archive/test/image
@@ -74,9 +88,13 @@ tasks:
 
 When syncing via a *Docker* relay, do not use the same *Docker* daemon for building local images (even better: don't use it for anything else but syncing). There is a risk that the reference to a locally built image clashes with the shorthand notation for a reference to an image on `docker.io`. E.g. if you built a local image `busybox`, then this would be indistinguishable from the shorthand `busybox` pointing to `docker.io/library/busybox`. One way to avoid this is to use `registry.hub.docker.com` instead of `docker.io` in references, which would never get shortened. If you're not syncing from/to `docker.io`, then all of this is not a concern.
 
+### Image Matching
+
+The `mappings` section of a task can employ *Go* regular expressions for describing what images to sync, and how to change the destination path and name of an image. Details about how this works and examples can be found in this [design document](doc/design-image-matching.md). Note however that this is still an *alpha* feature, so things may not quite work as expected. Also keep in mind that regular expressions can be surprising at times, so it would be a good idea to try them out first in a *Go* playground. You may otherwise potentially sync large numbers of images, clogging your target registry, or running into rate limits. Feedback about this feature is encouraged! 
+
 ### Repository Validation & Client Authentication with TLS
 
-When connecting to source and target repository servers, TLS validation is performed to verify the identity of a server. If you're using self-signed certificates for a repo server, or a server's certificate cannot be validated with the CA bundle available on your system, you need to provide the required CA certs. (The *dregsy* *Docker* image includes the CA bundle from the official `golang` image). Also, if a repo server requires client authentication, i.e. mutual TLS, you need to provide an appropriate client key & cert pair.
+When connecting to source and target repository servers, TLS validation is performed to verify the identity of a server. If you're using self-signed certificates for a repo server, or a server's certificate cannot be validated with the CA bundle available on your system, you need to provide the required CA certs. The *dregsy* *Docker* image includes the CA bundle that comes with the *Alpine* base image. Also, if a repo server requires client authentication, i.e. mutual TLS, you need to provide an appropriate client key & cert pair.
 
 How you do that for *Docker* is [described here](https://docs.docker.com/engine/security/certificates/). The short version: create a folder under `/etc/docker/certs.d` with the same name as the repo server's host name, e.g. `source-registry.acme.com`, and place any required CA certs there as `*.crt` (mind the extension). Client key & cert pairs go there as well, as `*.key` and `*.cert`.
 

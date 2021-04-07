@@ -1,0 +1,28 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+  api-version: 1.24
+
+lister:
+  maxItems: 50
+  cacheDuration: 5m
+
+tasks:
+- name: test-search
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+    auth: {{ .DockerhubAuth }}
+    lister:
+      type: index # for searching all of DockerHub
+      search: jenkins
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: regex:jenkins/jnlp-.*
+    to: regex:jenkins/,mapping-docker/dh/other-jenkins/
+    tags: ["latest"]

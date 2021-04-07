@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package sync
+package auth
 
 import (
 	"encoding/base64"
@@ -25,64 +25,41 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
-	log "github.com/sirupsen/logrus"
 )
 
 //
-func (l *Location) IsECR() bool {
-	ecr, _, _ := l.GetECR()
-	return ecr
-}
-
-//
-func (l *Location) GetECR() (ecr bool, region, account string) {
-
-	url := strings.Split(l.Registry, ".")
-
-	ecr = (len(url) == 6 || len(url) == 7) && url[1] == "dkr" && url[2] == "ecr" &&
-		url[4] == "amazonaws" && url[5] == "com" && (len(url) == 6 || url[6] == "cn")
-
-	if ecr {
-		region = url[3]
-		account = url[0]
-	} else {
-		region = ""
-		account = ""
+func NewECRAuthRefresher(account, region string, interval time.Duration) Refresher {
+	return &ecrAuthRefresher{
+		account:  account,
+		region:   region,
+		interval: interval,
 	}
-
-	return
-}
-
-//
-func newECRAuthRefresher(l *Location, interval time.Duration) *ecrAuthRefresher {
-	return &ecrAuthRefresher{loc: l, interval: interval}
 }
 
 //
 type ecrAuthRefresher struct {
-	loc      *Location
+	account  string
+	region   string
 	interval time.Duration
 	expiry   time.Time
 }
 
 //
-func (rf *ecrAuthRefresher) refresh() error {
+func (rf *ecrAuthRefresher) Refresh(creds *Credentials) error {
 
-	if rf.loc == nil || rf.interval == 0 || time.Now().Before(rf.expiry) {
+	if rf.account == "" || rf.region == "" ||
+		rf.interval == 0 || time.Now().Before(rf.expiry) {
 		return nil
 	}
-
-	_, region, account := rf.loc.GetECR()
-	log.WithField("registry", rf.loc.Registry).Info("refreshing credentials")
 
 	sess, err := session.NewSession()
 	if err != nil {
 		return err
 	}
 
-	svc := ecr.New(sess, &aws.Config{Region: aws.String(region)})
+	svc := ecr.New(sess, &aws.Config{Region: aws.String(rf.region)})
 	input := &ecr.GetAuthorizationTokenInput{
-		RegistryIds: []*string{aws.String(account)},
+		RegistryIds: []*string{aws.String(rf.account)},
 	}
 	authToken, err := svc.GetAuthorizationToken(input)
 	if err != nil {
@@ -101,15 +78,13 @@ func (rf *ecrAuthRefresher) refresh() error {
 			return fmt.Errorf("failed to parse credentials")
 		}
 
-		user := strings.TrimSpace(split[0])
-		pass := strings.TrimSpace(split[1])
-
-		rf.loc.Auth = base64.StdEncoding.EncodeToString([]byte(
-			fmt.Sprintf(`{"username": "%s", "password": "%s"}`, user, pass)))
+		creds.username = strings.TrimSpace(split[0])
+		creds.password = strings.TrimSpace(split[1])
+		creds.auther = BasicAuthJSON
 		rf.expiry = time.Now().Add(rf.interval)
 
 		return nil
 	}
 
-	return fmt.Errorf("no authorization data for '%s'", rf.loc.Registry)
+	return fmt.Errorf("no authorization data")
 }

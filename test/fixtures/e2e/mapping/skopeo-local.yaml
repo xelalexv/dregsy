@@ -1,0 +1,15 @@
+relay: skopeo
+
+tasks:
+- name: test-local # depends on results of skopeo-dockerhub test
+  verbose: true
+  source:
+    registry: 127.0.0.1:5000
+    skip-tls-verify: true
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    skip-tls-verify: true
+  mappings:
+  - from: regex:mapping-skopeo/dh/xelalex/dregsy-dummy.*
+    to: regex:mapping-skopeo/dh/,mapping-skopeo/dh-copy/

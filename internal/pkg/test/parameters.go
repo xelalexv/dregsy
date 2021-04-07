@@ -18,6 +18,8 @@ package test
 
 import (
 	"os"
+
+	"github.com/xelalexv/dregsy/internal/pkg/auth"
 )
 
 //
@@ -36,16 +38,22 @@ const (
 	EnvGCRHost    = "DREGSY_TEST_GCR_HOST"
 	EnvGCRProject = "DREGSY_TEST_GCR_PROJECT"
 	EnvGCRImage   = "DREGSY_TEST_GCR_IMAGE"
+
+	// Dockerhub
+	EnvDockerhubUser = "DREGSY_TEST_DOCKERHUB_USER"
+	EnvDockerhubPass = "DREGSY_TEST_DOCKERHUB_PASS"
 )
 
 //
 type Params struct {
-	DockerHost  string
-	ECRRegistry string
-	ECRRepo     string
-	GCRHost     string
-	GCRProject  string
-	GCRImage    string
+	DockerHost    string
+	ECRRegistry   string
+	ECRRepo       string
+	GCRHost       string
+	GCRProject    string
+	GCRImage      string
+	DockerhubAuth string
+	LocalAuth     string
 }
 
 //
@@ -58,6 +66,20 @@ func GetParams() *Params {
 		GCRHost:     os.Getenv(EnvGCRHost),
 		GCRProject:  os.Getenv(EnvGCRProject),
 		GCRImage:    os.Getenv(EnvGCRImage),
+	}
+
+	if creds, err := auth.NewCredentialsFromBasic(
+		"anonymous", "anonymous"); err == nil {
+		ret.LocalAuth = auth.BasicAuthJSON(creds)
+	}
+
+	user := os.Getenv(EnvDockerhubUser)
+	pass := os.Getenv(EnvDockerhubPass)
+
+	if user != "" && pass != "" {
+		if creds, err := auth.NewCredentialsFromBasic(user, pass); err == nil {
+			ret.DockerhubAuth = auth.BasicAuthJSON(creds)
+		}
 	}
 
 	if ret.DockerHost == "" {

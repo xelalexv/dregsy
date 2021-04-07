@@ -1,0 +1,27 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+  api-version: 1.24
+
+lister:
+  maxItems: -1
+  cacheDuration: -1
+
+tasks:
+- name: test-dockerhub
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+    auth: {{ .DockerhubAuth }}
+    lister:
+      type: dockerhub # for including private repos
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: regex:xelalex/dregsy-dummy-.*
+    to: mapping-docker/dh
+    tags: ["latest"]

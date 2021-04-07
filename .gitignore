@@ -2,3 +2,4 @@ _build
 scratchpad
 *.sublime*
 .makerc
+cmd/trial

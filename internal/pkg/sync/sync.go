@@ -180,7 +180,6 @@ func (s *Sync) syncTask(t *Task) {
 
 		log.WithFields(log.Fields{"from": m.From, "to": m.To}).Info("mapping")
 
-		src, trgt := t.mappingRefs(m)
 		if err := t.Source.RefreshAuth(); err != nil {
 			log.Error(err)
 			t.fail(true)
@@ -191,15 +190,31 @@ func (s *Sync) syncTask(t *Task) {
 			t.fail(true)
 			continue
 		}
-		if err := t.ensureTargetExists(trgt); err != nil {
+
+		refs, err := t.mappingRefs(m)
+		if err != nil {
 			log.Error(err)
 			t.fail(true)
 			continue
 		}
-		if err := s.relay.Sync(src, t.Source.Auth, t.Source.SkipTLSVerify,
-			trgt, t.Target.Auth, t.Target.SkipTLSVerify, m.Tags, t.Verbose); err != nil {
-			log.Error(err)
-			t.fail(true)
+
+		for _, ref := range refs {
+
+			src := ref[0]
+			trgt := ref[1]
+
+			if err := t.ensureTargetExists(trgt); err != nil {
+				log.Error(err)
+				t.fail(true)
+				break
+			}
+
+			if err := s.relay.Sync(src, t.Source.GetAuth(), t.Source.SkipTLSVerify,
+				trgt, t.Target.GetAuth(), t.Target.SkipTLSVerify, m.Tags,
+				t.Verbose); err != nil {
+				log.Error(err)
+				t.fail(true)
+			}
 		}
 	}
 

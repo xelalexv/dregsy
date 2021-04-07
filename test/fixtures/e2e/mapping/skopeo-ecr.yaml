@@ -1,0 +1,21 @@
+relay: skopeo
+
+lister:
+  maxItems: 100
+  cacheDuration: 24h
+
+tasks:
+- name: test-ecr
+  verbose: true
+  source:
+    registry: {{ .ECRRegistry }}
+    auth-refresh: 10h
+    lister:
+      type: catalog # default, can be omitted
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    skip-tls-verify: true
+  mappings:
+  - from: regex:kubika/.*
+    to: mapping-skopeo/ecr

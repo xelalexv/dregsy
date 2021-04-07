@@ -1,0 +1,26 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+  api-version: 1.24
+
+lister:
+  maxItems: 100
+  cacheDuration: 24h
+
+tasks:
+- name: test-ecr
+  verbose: true
+  source:
+    registry: {{ .ECRRegistry }}
+    auth-refresh: 10h
+    lister:
+      type: catalog # default, can be omitted
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: regex:kubika/.*
+    to: mapping-docker/ecr

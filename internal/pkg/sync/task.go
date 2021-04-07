@@ -19,7 +19,6 @@ package sync
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -28,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/xelalexv/dregsy/internal/pkg/registry"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
 )
 
@@ -40,6 +40,7 @@ type Task struct {
 	Mappings []*Mapping `yaml:"mappings"`
 	Verbose  bool       `yaml:"verbose"`
 	//
+	repoList *registry.RepoList
 	ticker   *time.Ticker
 	lastTick time.Time
 	failed   bool
@@ -74,12 +75,22 @@ func (t *Task) validate() error {
 			"target registry in task '%s' invalid: %v", t.Name, err)
 	}
 
+	hasRegexp := false
 	for _, m := range t.Mappings {
 		if err := m.validate(); err != nil {
 			return err
 		}
-		m.From = normalizePath(m.From)
-		m.To = normalizePath(m.To)
+		hasRegexp = hasRegexp || m.isRegexpFrom()
+	}
+
+	if hasRegexp {
+		var err error
+		s := t.Source
+		if t.repoList, err = registry.NewRepoList(s.Registry, s.SkipTLSVerify,
+			s.ListerType, s.ListerConfig, s.creds); err != nil {
+			return fmt.Errorf(
+				"cannot create repo list for task '%s': %v", t.Name, err)
+		}
 	}
 
 	return nil
@@ -146,12 +157,35 @@ func (t *Task) fail(f bool) {
 }
 
 //
-func (t *Task) mappingRefs(m *Mapping) (from, to string) {
+func (t *Task) mappingRefs(m *Mapping) ([][2]string, error) {
+
+	var ret [][2]string
+
 	if m != nil {
-		from = t.Source.Registry + m.From
-		to = t.Target.Registry + m.To
+
+		if m.isRegexpFrom() {
+
+			repos, err := t.repoList.Get()
+			if err != nil {
+				return nil, err
+			}
+
+			for _, r := range m.filterRepos(repos) {
+				ret = append(ret, [2]string{
+					t.Source.Registry + r,
+					t.Target.Registry + m.mapPath(r),
+				})
+			}
+
+		} else {
+			ret = append(ret, [2]string{
+				t.Source.Registry + m.From,
+				t.Target.Registry + m.mapPath(m.From),
+			})
+		}
 	}
-	return from, to
+
+	return ret, nil
 }
 
 //
@@ -207,12 +241,4 @@ func (t *Task) ensureTargetExists(ref string) error {
 	}
 
 	return nil
-}
-
-//
-func normalizePath(p string) string {
-	if strings.HasPrefix(p, "/") {
-		return p
-	}
-	return "/" + p
 }

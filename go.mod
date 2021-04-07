@@ -3,20 +3,25 @@ module github.com/xelalexv/dregsy
 go 1.13
 
 require (
-	github.com/Bowery/prompt v0.0.0-20190916142128-fa8279994f75 // indirect
-	github.com/aws/aws-sdk-go v1.31.6
-	github.com/dchest/safefile v0.0.0-20151022103144-855e8d98f185 // indirect
+	github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5 // indirect
+	github.com/aws/aws-sdk-go v1.38.13
+	github.com/containerd/containerd v1.3.3 // indirect
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/docker/cli v0.0.0-20200130152716-5d0cf8839492 // indirect
 	github.com/docker/distribution v2.7.1+incompatible
-	github.com/docker/docker v1.13.1
+	github.com/docker/docker v20.10.0+incompatible
+	github.com/docker/go-metrics v0.0.0-20181218153428-b84716841b82 // indirect
+	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/google/go-containerregistry v0.2.1
-	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/kardianos/govendor v1.0.9 // indirect
+	github.com/gorilla/mux v1.7.4 // indirect
+	github.com/moby/term v0.0.0-20201110203204-bea5bbe245bf // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/runc v0.1.1 // indirect
+	github.com/prometheus/client_golang v1.7.1 // indirect
 	github.com/sirupsen/logrus v1.7.0
+	github.com/stretchr/testify v1.6.1 // indirect
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
-	golang.org/x/net v0.0.0-20200822124328-c89045814202
 	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
-	google.golang.org/api v0.30.0
 	gopkg.in/yaml.v2 v2.3.0
 )
+
+// replace github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.7.0

@@ -1,0 +1,17 @@
+relay: skopeo
+
+tasks:
+- name: test-gcrnoauth
+  interval: 30
+  verbose: true
+  source:
+    registry: gcr.io
+    auth: none
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    skip-tls-verify: true
+  mappings:
+  - from: google_containers/pause
+    to: base-skopeo/gcr-noauth/pause
+    tags: ['3.2']

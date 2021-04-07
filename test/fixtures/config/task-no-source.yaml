@@ -1,5 +1,5 @@
 relay: skopeo
 tasks:
-  - name: test
-    interval: 60
-    source:
+- name: test
+  interval: 60
+  source:
