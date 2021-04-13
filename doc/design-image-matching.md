@@ -48,7 +48,7 @@ Note on *ECR*: For *ECR*, pagination of list results works slightly differently 
     - name: ecr
       verbose: true
       source:
-        registry: 388518484766.dkr.ecr.eu-central-1.amazonaws.com
+        registry: <account>.dkr.ecr.<region>.amazonaws.com
         auth-refresh: 10h
         lister:
           type: catalog # default, can be omitted
