@@ -147,11 +147,11 @@ Note however that you either need to set environment variables `AWS_ACCESS_KEY_I
 }
 ```
 
-### *GCR (Google Cloud Platform)*
+### *Google Container Registry (GCR)* and *Google Artifact Registry*
 
-If a source or target is a *Google Container Registry (GCR)*, `auth` may be omitted altogether. In this case either `GOOGLE_APPLICATION_CREDENTIALS` variable must be set (which is supposed to contain a path to a JSON file with credentials for a *GCP* service account), or *dregsy* must be run on a *GCE* instance with an appropriate service account attached. In case of *GCR*, `registry` must be specified as any of *GCR* addresses (i.e. `gcr.io`, `us.gcr.io`, `eu.gcr.io`, or `asia.gcr.io`), while the `from/to` mapping must include your *GCP* project name (i.e. `your-project-123/your-image`). Note that `GOOGLE_APPLICATION_CREDENTIALS`, if set, takes precedence even on a *GCE* instance.
+If a source or target is a *Google Container Registry (GCR)* or a *Google Artifact Registry* for containers, `auth` may be omitted altogether. In this case either `GOOGLE_APPLICATION_CREDENTIALS` variable must be set (which is supposed to contain a path to a JSON file with credentials for a *GCP* service account), or *dregsy* must be run on a *GCE* instance with an appropriate service account attached. `registry` must be either specified as any of the *GCR* addresses (i.e. `gcr.io`, `us.gcr.io`, `eu.gcr.io`, or `asia.gcr.io`), or have the suffix `-docker.pkg.dev` for artifact registry. The `from`/`to` mapping must include your *GCP* project name (i.e. `your-project-123/your-image`). Note that `GOOGLE_APPLICATION_CREDENTIALS`, if set, takes precedence even on a *GCE* instance.
 
-If you want to use *GCR* as the source for a public image, you can deactivate authentication all together by setting `auth` to `none`.
+If you want to use *GCR* or artifact registry as the source for a public image, you can deactivate authentication all together by setting `auth` to `none`.
 
 ## Usage
 
@@ -273,7 +273,7 @@ Tests are also started via the `Makefile`. To run the tests, you will need to pr
 
 - An *AWS* account to test syncing with *ECR*: Create a technical user in that account. This user should have full *ECR* permissions, i.e. the `AmazonEC2ContainerRegistryFullAccess` policy attached, since it will delete the used repo after the tests are done.
 
-- A *Google Cloud* account to test syncing with *GCR*: Create a project with the *Container Registry* API enabled. In that project, you need a service account with the roles *Cloud Build Service Agent* and *Storage Object Admin* enabled, since this service account also will need to delete the synced images again after the tests.
+- A *Google Cloud* account to test syncing with *GCR* and artifact registry: Create a project with the *Container Registry* and *Artifact Registry* APIs enabled. In that project, you need a service account with the roles *Cloud Build Service Agent*, *Storage Object Admin*, and *Artifact Registry Repository Administrator* enabled, since this service account also will need to delete the synced images again after the tests.
 
 The details for above requirements are configured via a `.makerc` file in the root of this project. Just run `make` and check the *Notes* section in the help output. Here's an example:
 
@@ -287,9 +287,16 @@ DREGSY_TEST_ECR_REPO = dregsy/test
 AWS_ACCESS_KEY_ID = {key ID}
 AWS_SECRET_ACCESS_KEY = {access key}
 
+# GCP
+GCP_CREDENTIALS = {full path to access JSON of service account}
+
 # GCR
 DREGSY_TEST_GCR_HOST = eu.gcr.io
 DREGSY_TEST_GCR_PROJECT = {your project}
 DREGSY_TEST_GCR_IMAGE = dregsy/test
-GCP_CREDENTIALS = {full path to access JSON of service account}
+
+# GAR
+DREGSY_TEST_GAR_HOST = europe-west3-docker.pkg.dev
+DREGSY_TEST_GAR_PROJECT = {your project}
+DREGSY_TEST_GAR_IMAGE = dregsy/test
 ```

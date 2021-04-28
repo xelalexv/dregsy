@@ -33,11 +33,18 @@ const (
 	EnvECRRegistry     = "DREGSY_TEST_ECR_REGISTRY"
 	EnvECRRepo         = "DREGSY_TEST_ECR_REPO"
 
+	// GCP
+	EnvGCPCreds = "GOOGLE_APPLICATION_CREDENTIALS"
+
 	// GCR
-	EnvGCPCreds   = "GOOGLE_APPLICATION_CREDENTIALS"
 	EnvGCRHost    = "DREGSY_TEST_GCR_HOST"
 	EnvGCRProject = "DREGSY_TEST_GCR_PROJECT"
 	EnvGCRImage   = "DREGSY_TEST_GCR_IMAGE"
+
+	// GAR
+	EnvGARHost    = "DREGSY_TEST_GAR_HOST"
+	EnvGARProject = "DREGSY_TEST_GAR_PROJECT"
+	EnvGARImage   = "DREGSY_TEST_GAR_IMAGE"
 
 	// Dockerhub
 	EnvDockerhubUser = "DREGSY_TEST_DOCKERHUB_USER"
@@ -52,6 +59,9 @@ type Params struct {
 	GCRHost       string
 	GCRProject    string
 	GCRImage      string
+	GARHost       string
+	GARProject    string
+	GARImage      string
 	DockerhubAuth string
 	LocalAuth     string
 }
@@ -66,6 +76,9 @@ func GetParams() *Params {
 		GCRHost:     os.Getenv(EnvGCRHost),
 		GCRProject:  os.Getenv(EnvGCRProject),
 		GCRImage:    os.Getenv(EnvGCRImage),
+		GARHost:     os.Getenv(EnvGARHost),
+		GARProject:  os.Getenv(EnvGARProject),
+		GARImage:    os.Getenv(EnvGARImage),
 	}
 
 	if creds, err := auth.NewCredentialsFromBasic(
@@ -95,6 +108,13 @@ func GetParams() *Params {
 	}
 	if ret.GCRImage == "" {
 		ret.GCRImage = "dregsy/test"
+	}
+
+	if ret.GARHost == "" {
+		ret.GARHost = "europe-west3-docker.pkg.dev"
+	}
+	if ret.GARImage == "" {
+		ret.GARImage = "dregsy/test"
 	}
 
 	return ret

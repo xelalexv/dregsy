@@ -1,0 +1,22 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+  api-version: 1.24
+
+tasks:
+- name: test-gar-noauth
+  interval: 60
+  verbose: true
+  source:
+    registry: us-docker.pkg.dev
+    auth: none
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: cloudrun/container/hello
+    to: base-docker/gar-noauth/hello
+    tags: ['latest']

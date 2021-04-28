@@ -55,17 +55,33 @@ func TestE2EDockerECR(t *testing.T) {
 
 //
 func TestE2EDockerGCR(t *testing.T) {
-	registries.SkipIfGCRNotConfigured(t)
+	registries.SkipIfGCPNotConfigured(t, true, false)
 	p := test.GetParams()
-	registries.RemoveGCRRepo(t, p)
+	registries.EmptyGCRRepo(t, p)
 	tryConfig(test.NewTestHelper(t), "e2e/base/docker-gcr.yaml",
 		1, 0, true, nil, p)
-	registries.RemoveGCRRepo(t, p)
+	registries.EmptyGCRRepo(t, p)
 }
 
 //
 func TestE2EDockerGCRNoAuth(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/base/docker-gcr-noauth.yaml",
+		1, 0, true, nil, test.GetParams())
+}
+
+//
+func TestE2EDockerGAR(t *testing.T) {
+	registries.SkipIfGCPNotConfigured(t, false, true)
+	p := test.GetParams()
+	registries.EmptyGARRepo(t, p)
+	tryConfig(test.NewTestHelper(t), "e2e/base/docker-gar.yaml",
+		1, 0, true, nil, p)
+	registries.EmptyGARRepo(t, p)
+}
+
+//
+func TestE2EDockerGARNoAuth(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/base/docker-gar-noauth.yaml",
 		1, 0, true, nil, test.GetParams())
 }
 
@@ -87,17 +103,33 @@ func TestE2ESkopeoECR(t *testing.T) {
 
 //
 func TestE2ESkopeoGCR(t *testing.T) {
-	registries.SkipIfGCRNotConfigured(t)
+	registries.SkipIfGCPNotConfigured(t, true, false)
 	p := test.GetParams()
-	registries.RemoveGCRRepo(t, p)
+	registries.EmptyGCRRepo(t, p)
 	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-gcr.yaml",
 		1, 0, true, nil, p)
-	registries.RemoveGCRRepo(t, p)
+	registries.EmptyGCRRepo(t, p)
 }
 
 //
 func TestE2ESkopeoGCRNoAuth(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-gcr-noauth.yaml",
+		1, 0, true, nil, test.GetParams())
+}
+
+//
+func TestE2ESkopeoGAR(t *testing.T) {
+	registries.SkipIfGCPNotConfigured(t, false, true)
+	p := test.GetParams()
+	registries.EmptyGARRepo(t, p)
+	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-gar.yaml",
+		1, 0, true, nil, p)
+	registries.EmptyGARRepo(t, p)
+}
+
+//
+func TestE2ESkopeoGARNoAuth(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-gar-noauth.yaml",
 		1, 0, true, nil, test.GetParams())
 }
 
