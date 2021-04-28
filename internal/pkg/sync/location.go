@@ -138,5 +138,6 @@ func (l *Location) GetECR() (ecr bool, region, account string) {
 
 //
 func (l *Location) IsGCR() bool {
-	return strings.HasSuffix(l.Registry, ".gcr.io")
+	return strings.HasSuffix(l.Registry, ".gcr.io") ||
+		strings.HasSuffix(l.Registry, "-docker.pkg.dev")
 }

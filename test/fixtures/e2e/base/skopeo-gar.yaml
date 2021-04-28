@@ -1,0 +1,14 @@
+relay: skopeo
+
+tasks:
+- name: test-gar
+  interval: 55
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: {{ .GARHost }}
+  mappings:
+  - from: library/busybox
+    to: {{ .GARProject }}/{{ .GARImage }}
+    tags: ['1.29.2', '1.29.3', 'latest']

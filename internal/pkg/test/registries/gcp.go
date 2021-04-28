@@ -41,20 +41,24 @@ type manifest struct {
 }
 
 //
-func SkipIfGCRNotConfigured(t *testing.T) {
+func SkipIfGCPNotConfigured(t *testing.T, gcr, gar bool) {
 
 	var missing []string
 
-	if os.Getenv(test.EnvGCRProject) == "" {
+	if gcr && os.Getenv(test.EnvGCRProject) == "" {
 		missing = append(missing, test.EnvGCRProject)
 	}
+	if gar && os.Getenv(test.EnvGARProject) == "" {
+		missing = append(missing, test.EnvGARProject)
+	}
+
 	creds := os.Getenv(test.EnvGCPCreds)
 	if creds == "" {
 		missing = append(missing, test.EnvGCPCreds)
 	}
 	if len(missing) > 0 {
 		t.Skipf(
-			"skipping, GCR not configured, missing these environment variables: %v",
+			"skipping, GCR/GAR not configured, missing these environment variables: %v",
 			missing)
 	}
 	if _, err := os.Stat(creds); err != nil {
@@ -62,14 +66,29 @@ func SkipIfGCRNotConfigured(t *testing.T) {
 	}
 }
 
-// this is very verbose, thought there'd be a better way, but...
-func RemoveGCRRepo(t *testing.T, p *test.Params) {
-
+//
+func EmptyGCRRepo(t *testing.T, p *test.Params) {
 	repo, err := gcrname.NewRepository(
 		fmt.Sprintf("%s/%s/%s", p.GCRHost, p.GCRProject, p.GCRImage))
 	if err != nil {
 		t.Fatal(err)
 	}
+	emptyGCPRepo(t, repo)
+}
+
+//
+func EmptyGARRepo(t *testing.T, p *test.Params) {
+	repo, err := gcrname.NewRepository(
+		fmt.Sprintf("%s/%s/%s", p.GARHost, p.GARProject, p.GARImage))
+	if err != nil {
+		t.Fatal(err)
+	}
+	emptyGCPRepo(t, repo)
+}
+
+// this is very verbose, thought there'd be a better way, but...
+// TODO: find out how to remove the repo
+func emptyGCPRepo(t *testing.T, repo gcrname.Repository) {
 
 	b, err := ioutil.ReadFile(os.Getenv(test.EnvGCPCreds))
 	if err != nil {

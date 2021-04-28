@@ -49,13 +49,17 @@ GO_IMAGE = golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db96
 #	If any of the above settings without a default is missing, ECR tests are skipped!
 #
 #	${ITL}DREGSY_TEST_GCR_HOST${NRM}		the GCR host to use; defaults to ${DIM}eu.gcr.io${NRM}
-#	${ITL}DREGSY_TEST_GCR_PROJECT${NRM} 	the GCP project ID to use
+#	${ITL}DREGSY_TEST_GCR_PROJECT${NRM} 	the GCP project ID to use with GCR tests
 #	${ITL}DREGSY_TEST_GCR_IMAGE${NRM} 		the image to use; defaults to ${DIM}dregsy/test${NRM}
 #
-#	${ITL}GCP_CREDENTIALS${NRM}			full path to credentials file for GCP service account
-#					with which to test GCR
+#	${ITL}DREGSY_TEST_GAR_HOST${NRM}		the GAR host to use; defaults to ${DIM}europe-west3-docker.pkg.dev${NRM}
+#	${ITL}DREGSY_TEST_GAR_PROJECT${NRM} 	the GCP project ID to use with GAR tests
+#	${ITL}DREGSY_TEST_GAR_IMAGE${NRM} 		the image to use; defaults to ${DIM}dregsy/test${NRM}
 #
-#	If any of the above settings without a default is missing, GCR tests are skipped!
+#	${ITL}GCP_CREDENTIALS${NRM}			full path to credentials file for GCP service account
+#					with which to test GCR/GAR
+#
+#	If any of the above settings without a default is missing, GCR and/or GAR tests are skipped!
 #
 -include .makerc
 
@@ -182,7 +186,8 @@ rmi:
 rmitest:
 #	remove all test-related container images
 #
-	$(call utils, remove_test_images "127.0.0.1:5000/*/*/*/*" "*/*/*/busybox")
+	$(call utils, remove_test_images \
+		"127.0.0.1:5000/*/*/*/*" "*/*/*/busybox" "*/cloudrun/container/hello")
 
 
 .PHONY: tests
