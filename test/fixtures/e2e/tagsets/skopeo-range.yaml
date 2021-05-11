@@ -1,0 +1,17 @@
+relay: skopeo
+
+tasks:
+- name: test-skopeo-range
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    to: tagsets-skopeo/range/busybox
+    tags:
+    - 'semver: >=1.31.0 <1.31.9'
+    - 'latest'

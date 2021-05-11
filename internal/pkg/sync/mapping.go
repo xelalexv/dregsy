@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/xelalexv/dregsy/internal/pkg/tags"
+	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
 //
@@ -34,6 +37,7 @@ type Mapping struct {
 	fromFilter *regexp.Regexp
 	toFilter   *regexp.Regexp
 	toReplace  string
+	tagSet     *tags.TagSet
 }
 
 //
@@ -50,7 +54,7 @@ func (m *Mapping) validate() error {
 	if m.isRegexpFrom() {
 		regex := m.From[len(RegexpPrefix):]
 		var err error
-		if m.fromFilter, err = compileRegex(regex, true); err != nil {
+		if m.fromFilter, err = util.CompileRegex(regex, true); err != nil {
 			return fmt.Errorf(
 				"'from' uses invalid regular expression '%s': %v", regex, err)
 		}
@@ -67,12 +71,18 @@ func (m *Mapping) validate() error {
 		m.toReplace = parts[1]
 
 		var err error
-		if m.toFilter, err = compileRegex(regex, false); err != nil {
+		if m.toFilter, err = util.CompileRegex(regex, false); err != nil {
 			return fmt.Errorf(
 				"'to' uses invalid regular expression '%s': %v", regex, err)
 		}
 	} else if m.To != "" {
 		m.To = normalizePath(m.To)
+	}
+
+	if tags, err := tags.NewTagSet(m.Tags); err != nil {
+		return fmt.Errorf("'tags' uses invalid format: %v", err)
+	} else {
+		m.tagSet = tags
 	}
 
 	return nil
@@ -121,19 +131,6 @@ func (m *Mapping) isRegexpTo() bool {
 //
 func isRegexp(expr string) bool {
 	return strings.HasPrefix(expr, RegexpPrefix)
-}
-
-//
-func compileRegex(v string, line bool) (*regexp.Regexp, error) {
-	if line {
-		if !strings.HasPrefix(v, "^") {
-			v = fmt.Sprintf("^%s", v)
-		}
-		if !strings.HasSuffix(v, "$") {
-			v = fmt.Sprintf("%s$", v)
-		}
-	}
-	return regexp.Compile(v)
 }
 
 //

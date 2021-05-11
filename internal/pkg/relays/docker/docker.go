@@ -22,7 +22,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -30,6 +29,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"golang.org/x/crypto/ssh/terminal"
+
+	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
 //
@@ -48,29 +49,6 @@ func (s *image) ref() string {
 //
 func (s *image) refWithTags() string {
 	return fmt.Sprintf("%s/%s:%v", s.Repo, s.Path, s.Tags)
-}
-
-//
-func SplitRef(ref string) (repo, path, tag string) {
-
-	ix := strings.Index(ref, "/")
-
-	if ix == -1 {
-		repo = ""
-		path = ref
-	} else {
-		repo = ref[:ix]
-		path = ref[ix+1:]
-	}
-
-	ix = strings.Index(path, ":")
-
-	if ix > -1 {
-		tag = path[ix+1:]
-		path = path[:ix]
-	}
-
-	return
 }
 
 //
@@ -155,7 +133,7 @@ func (dc *dockerClient) listImages(ref string) ([]*image, error) {
 	ret := []*image{}
 
 	if err == nil {
-		fRepo, fPath, fTag := SplitRef(ref)
+		fRepo, fPath, fTag := util.SplitRef(ref)
 		for _, img := range imgs {
 			var i *image
 			for _, rt := range img.RepoTags {
@@ -164,7 +142,7 @@ func (dc *dockerClient) listImages(ref string) ([]*image, error) {
 					return ret, err
 				}
 				if matched {
-					repo, path, tag := SplitRef(rt)
+					repo, path, tag := util.SplitRef(rt)
 					if i == nil {
 						i = &image{
 							ID:   img.ID,
@@ -192,14 +170,14 @@ func match(filterRepo, filterPath, filterTag, ref string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("malformed ref in filter '%s', %v", filter, err)
 	}
-	filterRepo, filterPath, _ = SplitRef(filterCanon.String())
+	filterRepo, filterPath, _ = util.SplitRef(filterCanon.String())
 
 	refCanon, err := reference.ParseAnyReference(ref)
 	if err != nil {
 		return false, fmt.Errorf("malformed image ref '%s': %v", ref, err)
 	}
 
-	repo, path, tag := SplitRef(refCanon.String())
+	repo, path, tag := util.SplitRef(refCanon.String())
 	return (filterRepo == "" || filterRepo == repo) &&
 		(filterPath == "" || filterPath == path) &&
 		(filterTag == "" || filterTag == tag), nil

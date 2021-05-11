@@ -23,6 +23,10 @@ import (
 
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
+	"github.com/xelalexv/dregsy/internal/pkg/tags"
+	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
 const RelayID = "docker"
@@ -87,11 +91,31 @@ func (r *DockerRelay) Dispose() error {
 
 //
 func (r *DockerRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
-	trgtRef, trgtAuth string, trgtSkipTLSVerify bool,
-	tags []string, verbose bool) error {
+	trgtRef, trgtAuth string, trgtSkipTLSVerify bool, ts *tags.TagSet,
+	verbose bool) error {
 
 	log.WithField("ref", srcRef).Info("pulling source image")
+
+	var tags []string
 	var err error
+
+	// When no tags are specified, a simple docker pull without a tag will get
+	// all tags. So for Docker relay, we don't need to list tags in this case.
+	if !ts.IsEmpty() {
+		srcCertDir := ""
+		repo, _, _ := util.SplitRef(srcRef)
+		if repo != "" {
+			srcCertDir = skopeo.CertsDirForRepo(repo)
+		}
+		tags, err = ts.Expand(func() ([]string, error) {
+			return skopeo.ListAllTags(
+				srcRef, util.DecodeJSONAuth(srcAuth), srcCertDir, srcSkipTLSVerify)
+		})
+
+		if err != nil {
+			return fmt.Errorf("error expanding tags: %v", err)
+		}
+	}
 
 	if len(tags) == 0 {
 		if err = r.pull(srcRef, srcAuth, true, verbose); err != nil {
@@ -168,7 +192,7 @@ func (r *DockerRelay) tag(images []*image, targetRef string) (
 	[]*image, error) {
 
 	taggedImages := []*image{}
-	targetRepo, targetPath, _ := SplitRef(targetRef)
+	targetRepo, targetPath, _ := util.SplitRef(targetRef)
 
 	for _, img := range images {
 		tagged := &image{

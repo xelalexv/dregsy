@@ -29,6 +29,7 @@ import (
 	"github.com/xelalexv/dregsy/internal/pkg/sync"
 	"github.com/xelalexv/dregsy/internal/pkg/test"
 	"github.com/xelalexv/dregsy/internal/pkg/test/registries"
+	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
 //
@@ -86,6 +87,70 @@ func TestE2EDockerGARNoAuth(t *testing.T) {
 }
 
 //
+func TestE2EDockerMappingDockerhub(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-dockerhub.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-docker/dh/xelalex/dregsy-dummy-public":  {"latest"},
+			"mapping-docker/dh/xelalex/dregsy-dummy-private": {"latest"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2EDockerMappingLocal(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-local.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-docker/dh-copy/xelalex/dregsy-dummy-public":  {"latest"},
+			"mapping-docker/dh-copy/xelalex/dregsy-dummy-private": {"latest"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2EDockerMappingDockerhubSearch(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-dh-search.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-docker/dh/other-jenkins/jnlp-slave": {"latest"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2EDockerMappingECR(t *testing.T) {
+	registries.SkipIfECRNotConfigured(t)
+	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-ecr.yaml",
+		0, 0, true, map[string][]string{
+			"mapping-docker/ecr/kubika/brucket":       {"v0.0.1"},
+			"mapping-docker/ecr/kubika/brucket-shell": {"v0.0.1"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2EDockerTagSetsRange(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/tagsets/docker-range.yaml",
+		0, 0, true, map[string][]string{
+			"tagsets-docker/range/busybox": {
+				"latest", "1.31", "1.31.0", "1.31.1-musl", "1.31.1",
+				"1.31.1-uclibc", "1.31.1-glibc",
+			},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2EDockerTagSetsRegex(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/tagsets/docker-regex.yaml",
+		0, 0, true, map[string][]string{
+			"tagsets-docker/regex/busybox": {
+				"1.26.1-musl", "1.26.1-glibc", "1.26.1-uclibc",
+			},
+			"tagsets-docker/regexinv/busybox": {"1.26.1-uclibc"},
+		},
+		test.GetParams())
+}
+
+//
 func TestE2ESkopeo(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo.yaml",
 		1, 0, true, nil, test.GetParams())
@@ -134,46 +199,6 @@ func TestE2ESkopeoGARNoAuth(t *testing.T) {
 }
 
 //
-func TestE2EDockerMappingDockerhub(t *testing.T) {
-	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-dockerhub.yaml",
-		0, 0, true, map[string][]string{
-			"mapping-docker/dh/xelalex/dregsy-dummy-public":  {"latest"},
-			"mapping-docker/dh/xelalex/dregsy-dummy-private": {"latest"},
-		},
-		test.GetParams())
-}
-
-//
-func TestE2EDockerMappingLocal(t *testing.T) {
-	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-local.yaml",
-		0, 0, true, map[string][]string{
-			"mapping-docker/dh-copy/xelalex/dregsy-dummy-public":  {"latest"},
-			"mapping-docker/dh-copy/xelalex/dregsy-dummy-private": {"latest"},
-		},
-		test.GetParams())
-}
-
-//
-func TestE2EDockerMappingDockerhubSearch(t *testing.T) {
-	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-dh-search.yaml",
-		0, 0, true, map[string][]string{
-			"mapping-docker/dh/other-jenkins/jnlp-slave": {"latest"},
-		},
-		test.GetParams())
-}
-
-//
-func TestE2EDockerMappingECR(t *testing.T) {
-	registries.SkipIfECRNotConfigured(t)
-	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-ecr.yaml",
-		0, 0, true, map[string][]string{
-			"mapping-docker/ecr/kubika/brucket":       {"v0.0.1"},
-			"mapping-docker/ecr/kubika/brucket-shell": {"v0.0.1"},
-		},
-		test.GetParams())
-}
-
-//
 func TestE2ESkopeoMappingDockerhub(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/mapping/skopeo-dockerhub.yaml",
 		0, 0, true, map[string][]string{
@@ -209,6 +234,30 @@ func TestE2ESkopeoMappingECR(t *testing.T) {
 		0, 0, true, map[string][]string{
 			"mapping-skopeo/ecr/kubika/brucket":       {"v0.0.1"},
 			"mapping-skopeo/ecr/kubika/brucket-shell": {"v0.0.1"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2ESkopeoTagSetsRange(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/tagsets/skopeo-range.yaml",
+		0, 0, true, map[string][]string{
+			"tagsets-skopeo/range/busybox": {
+				"latest", "1.31", "1.31.0", "1.31.1-musl", "1.31.1",
+				"1.31.1-uclibc", "1.31.1-glibc",
+			},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2ESkopeoTagSetsRegex(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/tagsets/skopeo-regex.yaml",
+		0, 0, true, map[string][]string{
+			"tagsets-skopeo/regex/busybox": {
+				"1.26.1-musl", "1.26.1-glibc", "1.26.1-uclibc",
+			},
+			"tagsets-skopeo/regexinv/busybox": {"1.26.1-uclibc"},
 		},
 		test.GetParams())
 }
@@ -260,7 +309,7 @@ func validateAgainstExpectations(th *test.TestHelper, c *sync.SyncConfig,
 	for eRef, eTags := range expectations {
 		ref := fmt.Sprintf("%s/%s", t.Target.Registry, eRef)
 		tags, err := skopeo.ListAllTags(ref,
-			skopeo.DecodeJSONAuth(t.Target.GetAuth()),
+			util.DecodeJSONAuth(t.Target.GetAuth()),
 			"", t.Target.SkipTLSVerify)
 		th.AssertNoError(err)
 		th.AssertEquivalentSlices(eTags, tags)
@@ -275,7 +324,7 @@ func validateAgainstTaskMapping(th *test.TestHelper, c *sync.SyncConfig) {
 		for _, m := range t.Mappings {
 			ref := fmt.Sprintf("%s%s", t.Target.Registry, m.To)
 			tags, err := skopeo.ListAllTags(ref,
-				skopeo.DecodeJSONAuth(t.Target.GetAuth()),
+				util.DecodeJSONAuth(t.Target.GetAuth()),
 				"", t.Target.SkipTLSVerify)
 			th.AssertNoError(err)
 			th.AssertEquivalentSlices(m.Tags, tags)

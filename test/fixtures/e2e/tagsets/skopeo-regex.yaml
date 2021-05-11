@@ -1,0 +1,32 @@
+relay: skopeo
+
+tasks:
+
+- name: test-skopeo-regex
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    to: tagsets-skopeo/regex/busybox
+    tags:
+    - 'regex: 1\.26\.1-(glibc|uclibc|musl)'
+
+- name: test-skopeo-regex-inverted # depends on results of the task above
+  verbose: true
+  source:
+    registry: 127.0.0.1:5000
+    skip-tls-verify: true
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    skip-tls-verify: true
+  mappings:
+  - from: tagsets-skopeo/regex/busybox
+    to: tagsets-skopeo/regexinv/busybox
+    tags:
+    - 'regex: !.+(glibc|musl)'

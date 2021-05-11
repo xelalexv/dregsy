@@ -1,0 +1,38 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+  api-version: 1.24
+
+tasks:
+
+- name: test-docker-regex
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    to: tagsets-docker/regex/busybox
+    tags:
+    - 'regex: 1\.26\.1-(glibc|uclibc|musl)'
+
+- name: test-docker-regex-inverted # depends on results of the task above
+  verbose: true
+  source:
+    registry: 127.0.0.1:5000
+    skip-tls-verify: true
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: tagsets-docker/regex/busybox
+    to: tagsets-docker/regexinv/busybox
+    tags:
+    - 'regex: !.+(glibc|musl)'
