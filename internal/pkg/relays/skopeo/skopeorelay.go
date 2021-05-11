@@ -23,7 +23,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
+	"github.com/xelalexv/dregsy/internal/pkg/tags"
+	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
 const RelayID = "skopeo"
@@ -77,11 +78,11 @@ func (r *SkopeoRelay) Dispose() error {
 
 //
 func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
-	destRef, destAuth string, destSkipTLSVerify bool,
-	tags []string, verbose bool) error {
+	destRef, destAuth string, destSkipTLSVerify bool, ts *tags.TagSet,
+	verbose bool) error {
 
-	srcCreds := DecodeJSONAuth(srcAuth)
-	destCreds := DecodeJSONAuth(destAuth)
+	srcCreds := util.DecodeJSONAuth(srcAuth)
+	destCreds := util.DecodeJSONAuth(destAuth)
 
 	cmd := []string{
 		"--insecure-policy",
@@ -96,12 +97,12 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	}
 
 	srcCertDir := ""
-	repo, _, _ := docker.SplitRef(srcRef)
+	repo, _, _ := util.SplitRef(srcRef)
 	if repo != "" {
-		srcCertDir = fmt.Sprintf("%s/%s", certsBaseDir, withoutPort(repo))
+		srcCertDir = CertsDirForRepo(repo)
 		cmd = append(cmd, fmt.Sprintf("--src-cert-dir=%s", srcCertDir))
 	}
-	repo, _, _ = docker.SplitRef(destRef)
+	repo, _, _ = util.SplitRef(destRef)
 	if repo != "" {
 		cmd = append(cmd, fmt.Sprintf(
 			"--dest-cert-dir=%s/%s", certsBaseDir, withoutPort(repo)))
@@ -114,12 +115,12 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 		cmd = append(cmd, fmt.Sprintf("--dest-creds=%s", destCreds))
 	}
 
-	if len(tags) == 0 {
-		var err error
-		tags, err = ListAllTags(srcRef, srcCreds, srcCertDir, srcSkipTLSVerify)
-		if err != nil {
-			return err
-		}
+	tags, err := ts.Expand(func() ([]string, error) {
+		return ListAllTags(srcRef, srcCreds, srcCertDir, srcSkipTLSVerify)
+	})
+
+	if err != nil {
+		return fmt.Errorf("error expanding tags: %v", err)
 	}
 
 	errs := false

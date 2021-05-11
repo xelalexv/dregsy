@@ -110,6 +110,9 @@ endif
 TEST_ALPINE ?= y
 TEST_UBUNTU ?= y
 
+TEST_CLEANUP = "127.0.0.1:5000/*/*/*/*" "*/*/*/busybox" \
+		"*/cloudrun/container/hello" "registry.hub.docker.com/library/busybox"
+
 export
 
 #
@@ -123,7 +126,7 @@ help:
 
 
 .PHONY: release
-release: clean rmi rmitest dregsy imgdregsy imgtests tests registrydown
+release: clean rmi dregsy imgdregsy imgtests tests registrydown
 #	clean, do an isolated build, create container images, and test
 #
 
@@ -186,8 +189,7 @@ rmi:
 rmitest:
 #	remove all test-related container images
 #
-	$(call utils, remove_test_images \
-		"127.0.0.1:5000/*/*/*/*" "*/*/*/busybox" "*/cloudrun/container/hello")
+	$(call utils, remove_test_images $(TEST_CLEANUP))
 
 
 .PHONY: tests
@@ -199,10 +201,12 @@ ifeq (,$(wildcard .makerc))
 	$(warning ***** Missing .makerc! Some tests may be skipped or fail!)
 endif
 ifeq ($(TEST_ALPINE),y)
+	$(call utils, remove_test_images $(TEST_CLEANUP))
 	$(call utils, registry_restart)
 	$(call utils, run_tests alpine)
 endif
 ifeq ($(TEST_UBUNTU),y)
+	$(call utils, remove_test_images $(TEST_CLEANUP))
 	$(call utils, registry_restart)
 	$(call utils, run_tests ubuntu)
 endif

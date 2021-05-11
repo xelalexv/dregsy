@@ -28,7 +28,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/xelalexv/dregsy/internal/pkg/registry"
-	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
+	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
 //
@@ -195,7 +195,7 @@ func (t *Task) ensureTargetExists(ref string) error {
 
 	if isEcr {
 
-		_, path, _ := docker.SplitRef(ref)
+		_, path, _ := util.SplitRef(ref)
 		if len(path) == 0 {
 			return nil
 		}

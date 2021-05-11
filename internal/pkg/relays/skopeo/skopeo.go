@@ -18,7 +18,6 @@ package skopeo
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -42,15 +41,14 @@ func init() {
 }
 
 //
-type creds struct {
-	Username string
-	Password string
-}
-
-//
 type tagList struct {
 	Repository string   `json:"Repository"`
 	Tags       []string `json:"Tags"`
+}
+
+//
+func CertsDirForRepo(r string) string {
+	return fmt.Sprintf("%s/%s", certsBaseDir, withoutPort(r))
 }
 
 //
@@ -131,28 +129,6 @@ func decodeTagList(tl []byte) (*tagList, error) {
 		return nil, err
 	}
 	return &ret, nil
-}
-
-//
-func DecodeJSONAuth(authBase64 string) string {
-
-	if authBase64 == "" {
-		return ""
-	}
-
-	decoded, err := base64.StdEncoding.DecodeString(authBase64)
-	if err != nil {
-		log.Error(err)
-		return ""
-	}
-
-	var ret creds
-	if err := json.Unmarshal([]byte(decoded), &ret); err != nil {
-		log.Error(err)
-		return ""
-	}
-
-	return fmt.Sprintf("%s:%s", ret.Username, ret.Password)
 }
 
 //

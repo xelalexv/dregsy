@@ -27,6 +27,7 @@ import (
 
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
+	"github.com/xelalexv/dregsy/internal/pkg/tags"
 )
 
 //
@@ -35,7 +36,7 @@ type Relay interface {
 	Dispose() error
 	Sync(srcRef, srcAuth string, srcSkiptTLSVerify bool,
 		trgtRef, trgtAuth string, trgtSkiptTLSVerify bool,
-		tags []string, verbose bool) error
+		tags *tags.TagSet, verbose bool) error
 }
 
 //
@@ -210,7 +211,7 @@ func (s *Sync) syncTask(t *Task) {
 			}
 
 			if err := s.relay.Sync(src, t.Source.GetAuth(), t.Source.SkipTLSVerify,
-				trgt, t.Target.GetAuth(), t.Target.SkipTLSVerify, m.Tags,
+				trgt, t.Target.GetAuth(), t.Target.SkipTLSVerify, m.tagSet,
 				t.Verbose); err != nil {
 				log.Error(err)
 				t.fail(true)
