@@ -1,5 +1,11 @@
 # Changelog
 
+## `0.4.0`
+- support for image matching (issue #16, *alpha* feature)
+- tag filtering with *semver* and *regex* (issue #22, *alpha* feature)
+- support token based authentication for *Google Artifact Registry* (issue #51)
+- doc updates & corrections
+
 ## `0.3.6`
 - added container image based on *Ubuntu 20.04* (issue #47)
 
