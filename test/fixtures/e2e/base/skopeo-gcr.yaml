@@ -6,6 +6,7 @@ tasks:
   verbose: true
   source:
     registry: registry.hub.docker.com
+    auth: {{ .DockerhubAuth }}
   target:
     registry: {{ .GCRHost }}
   mappings:

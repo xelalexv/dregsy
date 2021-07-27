@@ -5,6 +5,7 @@ tasks:
   verbose: true
   source:
     registry: registry.hub.docker.com
+    auth: {{ .DockerhubAuth }}
   target:
     registry: 127.0.0.1:5000
     auth: {{ .LocalAuth }}
