@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-FROM docker.io/ubuntu:20.04@sha256:c65d2b75a62135c95e2c595822af9b6f6cf0f32c11bcd4a38368d7b7c36b66f5
+FROM docker.io/ubuntu:20.04@sha256:1e48201ccc2ab83afc435394b3bf70af0fa0055215c1e26a5da9b50a1ae367c9
 
 LABEL maintainer "vollschwitz@gmx.net"
 
@@ -47,7 +47,7 @@ RUN apt-get update && \
         | gpg --dearmor > /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_stable.gpg && \
     apt-get update && \
     apt-get install -y --no-install-recommends --fix-missing \
-        skopeo=100:1.2.3-1 && \
+        skopeo=100:1.3.0-1 && \
     apt-get clean -y && \
     rm -rf \
         /var/cache/debconf/* \
