@@ -111,7 +111,8 @@ TEST_ALPINE ?= y
 TEST_UBUNTU ?= y
 
 TEST_CLEANUP = "127.0.0.1:5000/*/*/*/*" "*/*/*/busybox" \
-		"*/cloudrun/container/hello" "registry.hub.docker.com/library/busybox"
+		"*/cloudrun/container/hello" "registry.hub.docker.com/library/busybox" \
+		"*/jenkins/jnlp-slave" "*/*/*/hello"
 
 export
 
@@ -201,12 +202,14 @@ ifeq (,$(wildcard .makerc))
 	$(warning ***** Missing .makerc! Some tests may be skipped or fail!)
 endif
 ifeq ($(TEST_ALPINE),y)
-	$(call utils, remove_test_images $(TEST_CLEANUP))
+	$(call utils, remove_test_images $(TEST_CLEANUP)) > /dev/null
+	docker image prune --force
 	$(call utils, registry_restart)
 	$(call utils, run_tests alpine)
 endif
 ifeq ($(TEST_UBUNTU),y)
-	$(call utils, remove_test_images $(TEST_CLEANUP))
+	$(call utils, remove_test_images $(TEST_CLEANUP)) > /dev/null
+	docker image prune --force
 	$(call utils, registry_restart)
 	$(call utils, run_tests ubuntu)
 endif

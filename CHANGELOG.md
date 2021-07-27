@@ -1,5 +1,14 @@
 # Changelog
 
+## `0.4.1`
+- CVE remediations:
+    + [CVE-2020-26160](https://github.com/advisories/GHSA-w73w-5m7g-f7qc), `github.com/dgrijalva/jwt-go`
+    + [GHSA-c72p-9xmj-rx3w](https://github.com/advisories/GHSA-c72p-9xmj-rx3w), `github.com/containerd/containerd`
+- upgrades:
+    + *Skopeo* to 1.3.1 (*Alpine*) & 1.3.0 (*Ubuntu*)
+    + *Alpine* to 3.14.0
+    + *Ubuntu 20.04* to latest container image
+
 ## `0.4.0`
 - support for image matching (issue #16, *alpha* feature)
 - tag filtering with *semver* and *regex* (issue #22, *alpha* feature)
