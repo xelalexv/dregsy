@@ -54,15 +54,21 @@ tasks:
     #  - 'auth' contains the base64 encoded credentials for the registry
     #    in JSON form {"username": "...", "password": "..."}
     #  - 'auth-refresh' specifies an interval for automatic retrieval of
-    #    credentials; only for AWS ECR (see below)
+    #    credentials; only for AWS ECR (see below). If ommitted, will refresh
+    #    according to the expiration time returned by AWS
     #  - 'skip-tls-verify' determines whether to skip TLS verification for the
     #    registry server (only for 'skopeo', see note below); defaults to false
+    #  - 'auth-config' map of configuration options for registry auth.
+    #    Currently only ECR supports:
+    #    * 'aws-profile' name of AWS credential profile to use for ECR API calls
     source:
       registry: source-registry.acme.com
       auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogInNlY3JldCJ9Cg==
     target:
       registry: dest-registry.acme.com
       auth: eyJ1c2VybmFtZSI6ICJhbGV4IiwgInBhc3N3b3JkIjogImFsc29zZWNyZXQifQo=
+      auth-config:
+        aws-profile: foobar
       skip-tls-verify: true
 
     # 'mappings' is a list of 'from':'to' pairs that define mappings of image
