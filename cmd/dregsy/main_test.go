@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 	"text/template"
@@ -164,6 +165,73 @@ func TestE2ESkopeoECR(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-ecr.yaml",
 		1, 0, true, nil, p)
 	registries.RemoveECRRepo(t, p)
+}
+
+func genECRCredentialsFile(th *test.TestHelper, accessKeyId string, secretAccessKey string) (string, error) {
+	var access struct {
+		AccessKeyId     string
+		SecretAccessKey string
+	}
+	access.AccessKeyId = accessKeyId
+	access.SecretAccessKey = secretAccessKey
+
+	credsFile, err := ioutil.TempFile("", "credentials")
+	if err != nil {
+		return "", err
+	}
+
+	err = prepareConfig(th.GetFixture("e2e/_ecr-credentials.tmpl"), credsFile.Name(), access)
+	if err != nil {
+		os.Remove(credsFile.Name())
+		return "", err
+	}
+
+	return credsFile.Name(), nil
+}
+
+func setupAWSCredentials(th *test.TestHelper) (func(), error) {
+	accessKeyId := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+
+	oldCredsFile := os.Getenv("AWS_SHARED_CREDENTIALS_FILE")
+	credsFile, err := genECRCredentialsFile(th, accessKeyId, secretAccessKey)
+	if err != nil {
+		return nil, err
+	}
+
+	os.Unsetenv("AWS_ACCESS_KEY_ID")
+	os.Unsetenv("AWS_SECRET_ACCESS_KEY")
+	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", credsFile)
+
+	return func() {
+		os.Setenv("AWS_ACCESS_KEY_ID", accessKeyId)
+		os.Setenv("AWS_SECRET_ACCESS_KEY", secretAccessKey)
+
+		if oldCredsFile != "" {
+			os.Setenv("AWS_SHARED_CREDENTIALS_FILE", oldCredsFile)
+		} else {
+			os.Unsetenv("AWS_SHARED_CREDENTIALS_FILE")
+		}
+
+		os.Remove(credsFile)
+	}, nil
+}
+
+func TestE2ESkopeoECRMultiProfile(t *testing.T) {
+	registries.SkipIfECRNotConfigured(t)
+	p := test.GetParams()
+	registries.RemoveECRRepo(t, p)
+
+	th := test.NewTestHelper(t)
+	cleanup, err := setupAWSCredentials(th)
+	th.AssertNoError(err)
+
+	defer func() {
+		cleanup()
+		registries.RemoveECRRepo(t, p)
+	}()
+	tryConfig(th, "e2e/base/skopeo-ecr-multi-profile.yaml",
+		1, 0, true, nil, p)
 }
 
 //

@@ -1,0 +1,35 @@
+relay: skopeo
+
+tasks:
+- name: test-ecr-multi-profile-pre
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+    auth: {{ .DockerhubAuth }}
+  target:
+    registry: {{ .ECRRegistry }}
+    auth-refresh: 1h
+    auth-config:
+      aws-profile: dregsy-test-src
+  mappings:
+  - from: library/busybox
+    to: {{ .ECRRepo }}
+    tags: &tags ['1.29.2', '1.29.3', 'latest']
+
+- name: test-ecr-multi-profile
+  interval: 45
+  verbose: true
+  source:
+    registry: {{ .ECRRegistry }}
+    auth-refresh: 1h
+    auth-config:
+      aws-profile: dregsy-test-src
+  target:
+    registry: {{ .ECRRegistry }}
+    auth-refresh: 1h
+    auth-config:
+      aws-profile: dregsy-test-tgt
+  mappings:
+    - from: {{ .ECRRepo }}
+      to: {{ .ECRRepo }}
+      tags: *tags
