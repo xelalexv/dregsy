@@ -102,7 +102,7 @@ func NewRepoList(registry string, insecure bool, typ ListSourceType,
 			// lib; if the registry is ECR we therefore use a dedicated ECR
 			// lister based on the AWS Go SDK
 			log.Info("using dedicated ECR lister instead of standard catalog")
-			list.source = newECR(registry, region, account)
+			list.source = newECR(registry, region, account, listCreds)
 		} else {
 			list.source = newCatalog(registry, insecure,
 				strings.HasSuffix(server, ".gcr.io"), listCreds)

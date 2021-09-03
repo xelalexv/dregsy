@@ -37,6 +37,25 @@ func NewECRAuthRefresher(account, region string, interval time.Duration) Refresh
 }
 
 //
+func NewECRSession(region string, config *map[string]string) (*session.Session, error) {
+	awsConfig := aws.Config{Region: aws.String(region), CredentialsChainVerboseErrors: aws.Bool(true)}
+	sessionOptions := session.Options{
+		Config: awsConfig,
+		SharedConfigState: session.SharedConfigEnable,
+	}
+	if profile, ok := (*config)["aws-profile"]; ok {
+		sessionOptions.Profile = profile
+	}
+
+	sess, err := session.NewSessionWithOptions(sessionOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return sess, nil
+}
+
+//
 type ecrAuthRefresher struct {
 	account  string
 	region   string
@@ -46,18 +65,17 @@ type ecrAuthRefresher struct {
 
 //
 func (rf *ecrAuthRefresher) Refresh(creds *Credentials) error {
-
-	if rf.account == "" || rf.region == "" ||
-		rf.interval == 0 || time.Now().Before(rf.expiry) {
+	if rf.account == "" || rf.region == "" || time.Now().Before(rf.expiry) {
 		return nil
 	}
 
-	sess, err := session.NewSession()
+	config := creds.Config()
+	sess, err := NewECRSession(rf.region, config)
 	if err != nil {
 		return err
 	}
 
-	svc := ecr.New(sess, &aws.Config{Region: aws.String(rf.region)})
+	svc := ecr.New(sess)
 	input := &ecr.GetAuthorizationTokenInput{
 		RegistryIds: []*string{aws.String(rf.account)},
 	}
@@ -81,8 +99,12 @@ func (rf *ecrAuthRefresher) Refresh(creds *Credentials) error {
 		creds.username = strings.TrimSpace(split[0])
 		creds.password = strings.TrimSpace(split[1])
 		creds.auther = BasicAuthJSON
-		rf.expiry = time.Now().Add(rf.interval)
 
+		if rf.interval == 0 {
+			rf.expiry = *data.ExpiresAt
+		} else {
+			rf.expiry = time.Now().Add(rf.interval)
+		}
 		return nil
 	}
 

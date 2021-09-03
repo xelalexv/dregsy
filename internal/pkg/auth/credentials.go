@@ -45,6 +45,7 @@ type Credentials struct {
 	token     *Token
 	refresher Refresher
 	auther    Auther
+	config    map[string]string
 }
 
 //
@@ -83,6 +84,15 @@ func (c *Credentials) SetToken(t *Token) {
 //
 func (c *Credentials) SetRefresher(r Refresher) {
 	c.refresher = r
+}
+ 
+//
+func (c *Credentials) Config() *map[string]string {
+	return &c.config
+}
+
+func (c *Credentials) SetConfig(config map[string]string) {
+	c.config = config
 }
 
 //

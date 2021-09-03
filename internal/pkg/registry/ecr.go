@@ -23,8 +23,9 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	awsecr "github.com/aws/aws-sdk-go/service/ecr"
+
+	"github.com/xelalexv/dregsy/internal/pkg/auth"
 )
 
 //
@@ -47,11 +48,12 @@ func IsECR(registry string) (ecr bool, region, account string) {
 }
 
 //
-func newECR(registry, region, account string) ListSource {
+func newECR(registry, region, account string, creds *auth.Credentials) ListSource {
 	return &ecr{
 		registry: registry,
 		region:   region,
 		account:  account,
+		creds:    creds,
 	}
 }
 
@@ -60,6 +62,7 @@ type ecr struct {
 	registry string
 	region   string
 	account  string
+	creds    *auth.Credentials
 }
 
 //
@@ -104,9 +107,9 @@ func (e *ecr) Ping() error {
 
 //
 func (e *ecr) getService() (*awsecr.ECR, error) {
-	sess, err := session.NewSession()
+	sess, err := auth.NewECRSession(e.region, e.creds.Config())
 	if err != nil {
 		return nil, err
 	}
-	return awsecr.New(sess, &aws.Config{Region: aws.String(e.region)}), nil
+	return awsecr.New(sess), nil
 }

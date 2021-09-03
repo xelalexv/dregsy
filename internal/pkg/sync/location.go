@@ -36,6 +36,7 @@ type Location struct {
 	AuthRefresh   *time.Duration    `yaml:"auth-refresh"`
 	ListerConfig  map[string]string `yaml:"lister"`
 	ListerType    registry.ListSourceType
+	AuthConfig    map[string]string `yaml:"auth-config"`
 	//
 	creds *auth.Credentials
 }
@@ -80,15 +81,18 @@ func (l *Location) validate() error {
 	}
 
 	var interval time.Duration
-
 	if l.AuthRefresh != nil {
 		interval = *l.AuthRefresh
-		if interval < minimumAuthRefreshInterval {
+		if interval != 0 && interval < minimumAuthRefreshInterval {
 			interval = time.Duration(minimumAuthRefreshInterval)
 			log.WithField("registry", l.Registry).
 				Warnf("auth-refresh too short, setting to minimum: %s",
 					minimumAuthRefreshInterval)
 		}
+	}
+
+	if l.AuthConfig != nil {
+		l.creds.SetConfig(l.AuthConfig)
 	}
 
 	if l.IsECR() {
@@ -99,7 +103,6 @@ func (l *Location) validate() error {
 			"'%s' wants authentication refresh, but is not an ECR registry",
 			l.Registry)
 	}
-
 	if l.IsGCR() && !disableAuth {
 		l.creds.SetRefresher(auth.NewGCRAuthRefresher())
 	}

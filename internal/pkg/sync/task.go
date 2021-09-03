@@ -23,10 +23,10 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/xelalexv/dregsy/internal/pkg/auth"
 	"github.com/xelalexv/dregsy/internal/pkg/registry"
 	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
@@ -200,14 +200,12 @@ func (t *Task) ensureTargetExists(ref string) error {
 			return nil
 		}
 
-		sess, err := session.NewSession()
+		sess, err := auth.NewECRSession(region, t.Target.creds.Config())
 		if err != nil {
 			return err
 		}
 
-		svc := ecr.New(sess, &aws.Config{
-			Region: aws.String(region),
-		})
+		svc := ecr.New(sess)
 
 		inpDescr := &ecr.DescribeRepositoriesInput{
 			RegistryId:      aws.String(account),
