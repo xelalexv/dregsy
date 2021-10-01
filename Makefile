@@ -133,6 +133,22 @@ release: clean rmi dregsy imgdregsy imgtests tests registrydown
 #
 
 
+.PHONY: publish
+publish:
+#	tag & push all container images belonging to a complete release
+#
+	docker tag xelalex/$(REPO):latest-alpine xelalex/$(REPO):$(DREGSY_VERSION)
+	docker tag xelalex/$(REPO):latest-alpine xelalex/$(REPO):$(DREGSY_VERSION)-alpine
+	docker tag xelalex/$(REPO):latest-ubuntu xelalex/$(REPO):$(DREGSY_VERSION)-ubuntu
+
+	docker push xelalex/$(REPO):latest
+	docker push xelalex/$(REPO):latest-alpine
+	docker push xelalex/$(REPO):$(DREGSY_VERSION)
+	docker push xelalex/$(REPO):$(DREGSY_VERSION)-alpine
+	docker push xelalex/$(REPO):latest-ubuntu
+	docker push xelalex/$(REPO):$(DREGSY_VERSION)-ubuntu
+
+
 .PHONY: dregsy
 dregsy: prep
 #	build the ${ITL}dregsy${NRM} binary
