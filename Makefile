@@ -27,6 +27,7 @@ ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
 ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 
 GO_IMAGE = golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db9629a724af8a332fe54e3f7b3
+GOOS = $(shell uname -s | tr A-Z a-z)
 
 ## makerc
 # You need to set the following parameters in configuration file ${DIM}.makerc${NRM}, with every line
@@ -98,7 +99,7 @@ ISOLATED ?=
 ifeq ($(ISOLATED),y)
     CACHE_VOLS = -v $(ROOT)/$(ISOLATED_PKG):/go/pkg -v $(ROOT)/$(ISOLATED_CACHE):/.cache
 else
-    CACHE_VOLS = -v $(GOPATH)/pkg:/go/pkg -v /home/$(USER)/.cache:/.cache
+    CACHE_VOLS = -v $(GOPATH)/pkg:/go/pkg -v $(HOME)/.cache:/.cache
 endif
 
 ifeq ($(GCP_CREDENTIALS),)
@@ -139,7 +140,7 @@ dregsy: prep
 	docker run --rm --user $(shell id -u):$(shell id -g) \
         -v $(shell pwd)/$(BINARIES):/go/bin $(CACHE_VOLS) \
 		-v $(shell pwd):/go/src/$(REPO) -w /go/src/$(REPO) \
-		-e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 \
+		-e CGO_ENABLED=0 -e GOOS=$(GOOS) -e GOARCH=amd64 \
 		$(GO_IMAGE) go build -v -tags netgo -installsuffix netgo \
 		-ldflags "-w -X main.DregsyVersion=$(DREGSY_VERSION)" \
 		-o $(BINARIES)/dregsy ./cmd/dregsy/
