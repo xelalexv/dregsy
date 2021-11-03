@@ -27,7 +27,7 @@ ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
 ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 
 GO_IMAGE = golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db9629a724af8a332fe54e3f7b3
-GOOS = $(uname -s | tr A-Z a-z)
+GOOS = $(shell uname -s | tr A-Z a-z)
 
 ## makerc
 # You need to set the following parameters in configuration file ${DIM}.makerc${NRM}, with every line
