@@ -86,6 +86,7 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 
 	cmd := []string{
 		"--insecure-policy",
+		"--all"
 		"copy",
 	}
 
