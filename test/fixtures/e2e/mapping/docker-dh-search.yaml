@@ -23,6 +23,6 @@ tasks:
     # not actually supported for Docker relay, but need this for validation
     skip-tls-verify: true
   mappings:
-  - from: regex:jenkins/jnlp-.*
+  - from: regex:jenkins/jnlp-s.*
     to: regex:jenkins/,mapping-docker/dh/other-jenkins/
     tags: ["latest"]

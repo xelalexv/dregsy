@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-FROM docker.io/ubuntu:20.04@sha256:1e48201ccc2ab83afc435394b3bf70af0fa0055215c1e26a5da9b50a1ae367c9
+FROM docker.io/ubuntu:20.04@sha256:7c9c7fed23def3653a0da5bc9ecb651efe155ebd5802c7ba5d585edaa6c89496
 
 LABEL maintainer "vollschwitz@gmx.net"
 
@@ -32,6 +32,9 @@ ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes
 #
 #        --> Find a package source without amnesia, or switch to newer Ubuntu
 #            base image, which would have Skopeo in its repos already.
+#
+# for Skopeo version available on kubic, check here:
+#	https://build.opensuse.org/package/show/devel:kubic:libcontainers:stable/skopeo
 #
 
 RUN apt-get update && \

@@ -26,7 +26,7 @@ BINARIES = $(BUILD_OUTPUT)/bin
 ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
 ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 
-GO_IMAGE = golang:1.13.6-buster@sha256:f6cefbdd25f9a66ec7dcef1ee5deb417882b9db9629a724af8a332fe54e3f7b3
+GO_IMAGE = golang:1.17.7@sha256:a6c0b3e8b7d2faed2415448f20e75ed26eed6fdb1d261873ed4205907d92c674
 GOOS = $(shell uname -s | tr A-Z a-z)
 
 ## makerc

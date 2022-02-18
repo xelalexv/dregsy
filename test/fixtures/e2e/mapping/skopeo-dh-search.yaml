@@ -18,6 +18,6 @@ tasks:
     auth: {{ .LocalAuth }}
     skip-tls-verify: true
   mappings:
-  - from: regex:jenkins/jnlp-.*
+  - from: regex:jenkins/jnlp-s.*
     to: regex:jenkins/,mapping-skopeo/dh/other-jenkins/
     tags: ["latest"]
