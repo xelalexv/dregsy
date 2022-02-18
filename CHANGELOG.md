@@ -1,5 +1,17 @@
 # Changelog
 
+## `0.4.2`
+- CVE remediations:
+    + [OCI Manifest Type Confusion Issue](https://github.com/advisories/GHSA-qq97-vm5h-rrhg)
+    + [Ambiguous OCI manifest parsing](https://github.com/advisories/GHSA-5j5w-g665-5m35)
+    + [Clarify `mediaType` handling](https://github.com/advisories/GHSA-77vh-xpmg-72qh)
+    + [Insufficiently restricted permissions on plugin directories](https://github.com/advisories/GHSA-c2h3-6mxw-7mvq)
+- upgrades:
+    + switched to *Go* 1.17
+    + *Ubuntu 20.04* and *Alpine 3.14* to latest container images
+- fixes:
+    + building on non-*Linux* platforms (issue #61)
+
 ## `0.4.1`
 - CVE remediations:
     + [CVE-2020-26160](https://github.com/advisories/GHSA-w73w-5m7g-f7qc), `github.com/dgrijalva/jwt-go`
