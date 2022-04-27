@@ -26,11 +26,14 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/xelalexv/dregsy/internal/pkg/util"
+
+	"github.com/robertkrimen/otto"
 )
 
 //
 const SemverPrefix = "semver:"
 const RegexpPrefix = "regex:"
+const JsPrefix = "js:"
 
 //
 func NewTagSet(tags []string) (*TagSet, error) {
@@ -46,6 +49,7 @@ type TagSet struct {
 	verbatim []string
 	semver   []semver.Range
 	regex    []*regex
+	js       []*js
 }
 
 //
@@ -57,6 +61,10 @@ func (ts *TagSet) add(tags []string) error {
 			}
 		} else if isRegex(t) {
 			if err := ts.addRegex(t); err != nil {
+				return err
+			}
+		} else if isJs(t) {
+			if err := ts.addJs(t); err != nil {
 				return err
 			}
 		} else {
@@ -95,6 +103,16 @@ func (ts *TagSet) addRegex(r string) error {
 }
 
 //
+func (ts *TagSet) addJs(r string) error {
+	jsInst, err := newJs(strings.TrimSpace(r[len(JsPrefix):]))
+	if err != nil {
+		return err
+	}
+	ts.js = append(ts.js, jsInst)
+	return nil
+}
+
+//
 func (ts *TagSet) IsEmpty() bool {
 	return !ts.HasVerbatim() && !ts.HasSemver() && !ts.HasRegex()
 }
@@ -115,6 +133,11 @@ func (ts *TagSet) HasRegex() bool {
 }
 
 //
+func (ts *TagSet) HasJs() bool {
+	return len(ts.js) > 0
+}
+
+//
 func (ts *TagSet) NeedsExpansion() bool {
 	return ts.IsEmpty() || ts.HasSemver() || ts.HasRegex()
 }
@@ -132,7 +155,7 @@ func (ts *TagSet) Expand(lister func() ([]string, error)) ([]string, error) {
 				"failed listing tags during tag set expansion: %v", err)
 		}
 
-		if !ts.HasSemver() && !ts.HasRegex() { // tag set is completely empty
+		if !ts.HasSemver() && !ts.HasRegex() && !ts.HasJs() { // tag set is completely empty
 			addToSet(set, tags)
 
 		} else {
@@ -141,6 +164,9 @@ func (ts *TagSet) Expand(lister func() ([]string, error)) ([]string, error) {
 			}
 			if ts.HasRegex() {
 				addToSet(set, ts.expandRegex(tags))
+			}
+			if ts.HasJs() {
+				addToSet(set, ts.expandJs(tags))
 			}
 		}
 	}
@@ -206,6 +232,23 @@ func (ts *TagSet) expandRegex(tags []string) []string {
 }
 
 //
+func (ts *TagSet) expandJs(tags []string) []string {
+
+	var ret []string
+	for _, t := range tags {
+		for _, jsInst := range ts.js {
+			if jsInst.matches(t) {
+				ret = append(ret, t)
+				break
+			}
+		}
+	}
+
+	log.Debugf("tags expanded from js: %v", ret)
+	return ret
+}
+
+//
 func addToSet(s map[string]string, tags []string) {
 	for _, t := range tags {
 		s[t] = t
@@ -220,6 +263,11 @@ func isSemver(tag string) bool {
 //
 func isRegex(tag string) bool {
 	return strings.HasPrefix(tag, RegexpPrefix)
+}
+
+//
+func isJs(tag string) bool {
+	return strings.HasPrefix(tag, JsPrefix)
 }
 
 //
@@ -251,4 +299,46 @@ func (r *regex) matches(s string) bool {
 		return !r.expr.MatchString(s)
 	}
 	return r.expr.MatchString(s)
+}
+
+//
+func newJs(r string) (*js, error) {
+
+	r = strings.TrimSpace(r)
+	return &js{
+		vm:   otto.New(),
+		jsfn: fmt.Sprintf(`(function(v){%s})(v)`, r),
+	}, nil
+}
+
+type js struct {
+	vm   *otto.Otto
+	jsfn string
+}
+
+//
+func (r *js) matches(s string) bool {
+	err := r.vm.Set("v", s)
+	if err != nil {
+		log.Debugf("skipping tag '%s', js prepare error: %v", s, err)
+		return false
+	}
+
+	v, err := r.vm.Eval(r.jsfn)
+	if err != nil {
+		log.Debugf("skipping tag '%s', js call error: %v", s, err)
+		return false
+	}
+	if v.IsBoolean() {
+		rv, _ := v.ToBoolean()
+		return rv
+	}
+
+	if v.IsNumber() {
+		rv, _ := v.ToInteger()
+		return rv != 0
+	}
+	log.Debugf("skipping tag '%s', js returns unsupported result: %v", s, v)
+
+	return false
 }

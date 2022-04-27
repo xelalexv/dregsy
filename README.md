@@ -92,21 +92,22 @@ The `mappings` section of a task can employ *Go* regular expressions for describ
 
 ### Tag Filtering
 
-The `tags` list of a task can use *semver* and regular expression filters, so you can do something like this:
+The `tags` list of a task can use *semver*, regular expression, js script filters, so you can do something like this:
 
 ```yaml
 tags:
   - 'semver: >=1.31.0 <1.31.9'
   - 'regex: 1\.26\.[0-9]-(glibc|uclibc|musl)'
+  - 'js: v.indexOf("10.") == 0 && v.indexOf("-source") < 0'
   - '1.29.4'
   - 'latest'
 ```
 
-This would sync all tags describing versions equal to or larger than `1.31.0`, but lower than `1.31.9`, via the `semver:` filter. The `regex:` filter additionally syncs any `1.26.`x image with suffix `-glibc`, `-uclibc`, or `-musl`. Finally, the verbatim tags `1.29.4` and `latest` are also synced.
+This would sync all tags describing versions equal to or larger than `1.31.0`, but lower than `1.31.9`, via the `semver:` filter. The `regex:` filter additionally syncs any `1.26.`x image with suffix `-glibc`, `-uclibc`, or `-musl`. Js filter can be used for more complex scenarios. Finally, the verbatim tags `1.29.4` and `latest` are also synced.
 
-Note that tag filtering is still an *alpha* feature. Also, the tags of an image need to conform to the *semver* specification *2.0.0* in order to be considered during filtering. The implementation uses the [blang/semver](https://github.com/blang/semver) lib. Have a look at their page or [the GoDoc](https://pkg.go.dev/github.com/blang/semver/v4) for more info on how to write *semver* filter expressions. Semver filtering tolerates and handles tags starting with a `v` prefix. Semver filter expressions however must not use a `v` prefix. Regex filters use standard *Go* regular expressions. When the first non-whitespace character after `regex:` is `!`, the filter will use inverted match. Keep in mind that when a regex contains a backslash, you need to place it inside single quotes to keep the YAML valid.
+Note that tag filtering is still an *alpha* feature. Also, the tags of an image need to conform to the *semver* specification *2.0.0* in order to be considered during filtering. The implementation uses the [blang/semver](https://github.com/blang/semver) lib. Have a look at their page or [the GoDoc](https://pkg.go.dev/github.com/blang/semver/v4) for more info on how to write *semver* filter expressions. Semver filtering tolerates and handles tags starting with a `v` prefix. Semver filter expressions however must not use a `v` prefix. Regex filters use standard *Go* regular expressions. When the first non-whitespace character after `regex:` is `!`, the filter will use inverted match. Keep in mind that when a regex contains a backslash, you need to place it inside single quotes to keep the YAML valid. JS syntax supports only ES5, [otto engine](https://github.com/robertkrimen/otto) used.
 
-You can add multiple `semver:` and `regex:` filters under `tags`. Note however that the filters are simply ORed, i.e. a tag is synced if it satisfies at least one of the items under `tags`, be it semver, regex, or verbatim. So this is not a filter chain. Also, no sanity checks are done on the filters, so care must be taken to avoid competing or contradicting filters that select all or nothing at all.
+You can add multiple `semver:`, `regex:`, `js:`  filters under `tags`. Note however that the filters are simply ORed, i.e. a tag is synced if it satisfies at least one of the items under `tags`, be it semver, regex, js, or verbatim. So this is not a filter chain. Also, no sanity checks are done on the filters, so care must be taken to avoid competing or contradicting filters that select all or nothing at all.
 
 
 ### Repository Validation & Client Authentication with TLS
