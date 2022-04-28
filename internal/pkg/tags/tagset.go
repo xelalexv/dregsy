@@ -114,7 +114,7 @@ func (ts *TagSet) addJs(r string) error {
 
 //
 func (ts *TagSet) IsEmpty() bool {
-	return !ts.HasVerbatim() && !ts.HasSemver() && !ts.HasRegex()
+	return !ts.HasVerbatim() && !ts.HasSemver() && !ts.HasRegex() && !ts.HasJs()
 }
 
 //
@@ -139,7 +139,7 @@ func (ts *TagSet) HasJs() bool {
 
 //
 func (ts *TagSet) NeedsExpansion() bool {
-	return ts.IsEmpty() || ts.HasSemver() || ts.HasRegex()
+	return ts.IsEmpty() || ts.HasSemver() || ts.HasRegex() || ts.HasJs()
 }
 
 //
