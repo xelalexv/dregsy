@@ -14,17 +14,17 @@
 # limitations under the License.
 #
 
-FROM alpine:3.14.3@sha256:5e604d3358ab7b6b734402ce2e19ddd822a354dc14843f34d36c603521dbb4f9
+FROM alpine:3.15.4@sha256:a777c9c66ba177ccfea23f2a216ff6721e78a662cd17019488c417135299cd89
 
 LABEL maintainer "vollschwitz@gmx.net"
 
 ARG binaries
 
 #
-# check for available Skopeo here:
+# check for available Skopeo here (mind the branch in URL):
 #	https://pkgs.alpinelinux.org/packages?name=skopeo&branch=v3.15&arch=x86_64
 #
-RUN apk --update add --no-cache skopeo=1.3.1-r1 ca-certificates
+RUN apk --update add --no-cache skopeo=1.5.2-r1 ca-certificates
 
 COPY ${binaries}/dregsy /usr/local/bin
 

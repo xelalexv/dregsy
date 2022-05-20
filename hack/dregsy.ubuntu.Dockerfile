@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-FROM docker.io/ubuntu:20.04@sha256:7c9c7fed23def3653a0da5bc9ecb651efe155ebd5802c7ba5d585edaa6c89496
+FROM docker.io/ubuntu:22.04@sha256:aa6c2c047467afc828e77e306041b7fa4a65734fe3449a54aa9c280822b0d87d
 
 LABEL maintainer "vollschwitz@gmx.net"
 
@@ -24,33 +24,17 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes
 
 #
-# FIXME: The kubic project only maintains one Skopeo version, i.e. as soon as
-#        they release a new one, the older one gets removed. As a result, this
-#        Docker build will fail. This makes it hard to stay at a particular
-#        Skopeo version so that we stay in sync with the version in the Alpine
-#        based image.
+# check for available Skopeo here:
+#   https://packages.ubuntu.com/search?keywords=skopeo&searchon=names&suite=jammy&section=all
 #
-#        --> Find a package source without amnesia, or switch to newer Ubuntu
-#            base image, which would have Skopeo in its repos already.
-#
-# for Skopeo version available on kubic, check here:
-#	https://build.opensuse.org/package/show/devel:kubic:libcontainers:stable/skopeo
-#
-
 RUN apt-get update && \
     apt-get upgrade -y --fix-missing && \
     apt-get install -y --no-install-recommends --fix-missing \
         ca-certificates \
         apt-utils \
         gpg \
-        curl && \
-    echo 'deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_20.04/ /' \
-        > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list && \
-    curl -fsSL https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/xUbuntu_20.04/Release.key \
-        | gpg --dearmor > /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_stable.gpg && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends --fix-missing \
-        skopeo=100:1.3.0-1 && \
+        curl \
+        skopeo=1.4.1+ds1-1 && \
     apt-get clean -y && \
     rm -rf \
         /var/cache/debconf/* \

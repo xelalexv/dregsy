@@ -26,7 +26,7 @@ BINARIES = $(BUILD_OUTPUT)/bin
 ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
 ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 
-GO_IMAGE = golang:1.17.7@sha256:a6c0b3e8b7d2faed2415448f20e75ed26eed6fdb1d261873ed4205907d92c674
+GO_IMAGE = golang:1.18.2@sha256:a9d1f28367890615df70c45ba54ea69a8e95e202517e7114942c2f0449ce1de9
 GOOS = $(shell uname -s | tr A-Z a-z)
 
 ## makerc
@@ -154,12 +154,13 @@ dregsy: prep
 #	build the ${ITL}dregsy${NRM} binary
 #
 	docker run --rm --user $(shell id -u):$(shell id -g) \
-        -v $(shell pwd)/$(BINARIES):/go/bin $(CACHE_VOLS) \
+		-v $(shell pwd)/$(BINARIES):/go/bin $(CACHE_VOLS) \
 		-v $(shell pwd):/go/src/$(REPO) -w /go/src/$(REPO) \
 		-e CGO_ENABLED=0 -e GOOS=$(GOOS) -e GOARCH=amd64 \
-		$(GO_IMAGE) go build -v -tags netgo -installsuffix netgo \
-		-ldflags "-w -X main.DregsyVersion=$(DREGSY_VERSION)" \
-		-o $(BINARIES)/dregsy ./cmd/dregsy/
+		$(GO_IMAGE) bash -c \
+			"go mod tidy && go build -v -tags netgo -installsuffix netgo \
+			-ldflags \"-w -X main.DregsyVersion=$(DREGSY_VERSION)\" \
+			-o $(BINARIES)/dregsy ./cmd/dregsy/"
 
 
 .PHONY: imgdregsy

@@ -1,7 +1,18 @@
 # Changelog
 
+## `master`
+- remediation of CVEs in dependencies:
+    + [Improper Input Validation in GoGo Protobuf](https://github.com/advisories/GHSA-c3h9-896r-86jm)
+    + [containerd CRI plugin: Insecure handling of image volumes](https://github.com/advisories/GHSA-crp2-qrr5-8pq7)
+- upgrades:
+    + switched to *Go* 1.18
+    + switched to *Ubuntu 22.04* and *Alpine 3.15*
+    + *Skopeo* to 1.5.2 (*Alpine*) & 1.4.2 (*Ubuntu*)
+
+        *Note*: Due to switching to 22.04, we can now install *Skopeo* on *Ubuntu* from OS packages. Latest version there is 1.4.2. *Alpine* however skipped from 1.3 to 1.5, so for the time being, we will have to live with different minor versions of *Skopeo* in the two images.
+
 ## `0.4.2`
-- CVE remediations:
+- remediation of CVEs in dependencies:
     + [OCI Manifest Type Confusion Issue](https://github.com/advisories/GHSA-qq97-vm5h-rrhg)
     + [Ambiguous OCI manifest parsing](https://github.com/advisories/GHSA-5j5w-g665-5m35)
     + [Clarify `mediaType` handling](https://github.com/advisories/GHSA-77vh-xpmg-72qh)
@@ -13,7 +24,7 @@
     + building on non-*Linux* platforms (issue #61)
 
 ## `0.4.1`
-- CVE remediations:
+- remediation of CVEs in dependencies:
     + [CVE-2020-26160](https://github.com/advisories/GHSA-w73w-5m7g-f7qc), `github.com/dgrijalva/jwt-go`
     + [GHSA-c72p-9xmj-rx3w](https://github.com/advisories/GHSA-c72p-9xmj-rx3w), `github.com/containerd/containerd`
 - upgrades:
