@@ -92,7 +92,7 @@ When syncing via a *Docker* relay, do not use the same *Docker* daemon for build
 
 ### Image Matching <sup>*&#946; feature*</sup>
 
-The `mappings` section of a task can employ *Go* regular expressions for describing what images to sync, and how to change the destination path and name of an image. Details about how this works and examples can be found in this [design document](doc/design-image-matching.md). Also keep in mind that regular expressions can be surprising at times, so it would be a good idea to try them out first in a *Go* playground. You may otherwise potentially sync large numbers of images, clogging your target registry, or running into rate limits. Feedback about this feature is encouraged! 
+The `mappings` section of a task can employ *Go* regular expressions for describing what images to sync, and how to change the destination path and name of an image. Details about how this works and examples can be found in this [design document](doc/design-image-matching.md). Also keep in mind that regular expressions can be surprising at times, so it would be a good idea to try them out first in a *Go* playground. You may otherwise potentially sync large numbers of images, clogging your target registry, or running into rate limits. Feedback about this feature is encouraged!
 
 
 ### Tag Filtering <sup>*&#946; feature*</sup>
@@ -205,6 +205,24 @@ dregsy -config={path to config file} [-run={task name regexp}]
 ```
 
 If there are any periodic sync tasks defined (see *Configuration* above), *dregsy* remains running indefinitely. Otherwise, it will return once all one-off tasks have been processed. With the `-run` argument you can filter tasks. Only those tasks for which the task name matches the given regular expression will be run. Note that the regular expression performs a line match, so you don't need to place the expression in `^...$` to get an exact match. For example, `-run=task-a` will only select `task-a`, but not `task-abc`.
+
+If `--dry-run` is used no actions will be performed on the source and target registries but authenticate and obtain the list of docker image/tags available for the configured entries to be synced to show the actual differences between configuration,source and target registries / tags.
+
+When executing the `--dry-run` flag, a set of files will be generated, 1 per task and per mapping, you can easily combine them using [`jq`](https://github.com/stedolan/jq) for example using:
+
+```bash
+jq -s '.' dregsy-*-dry-run-report.json
+```
+
+to then perform validation / filtering on a array level.
+
+Example, get all the tags available on target that migth require to be cleaned:
+
+```bash
+jq -sc '.[]|{"candidateToBeCleaned":.["tags available on target that are not synced"], "repo": .["target reference"]}' dregsy-*-dry-run-report.json
+# if you prefer a single output as array you can use
+jq -s '[.[]|{"candidateToBeCleaned":.["tags available on target that are not synced"], "repo": .["target reference"]}]' dregsy-*-dry-run-report.json
+```
 
 ### Logging
 Logging behavior can be changed with these environment variables:

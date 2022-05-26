@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -97,4 +98,44 @@ func DecodeJSONAuth(authBase64 string) string {
 	}
 
 	return fmt.Sprintf("%s:%s", ret.Username, ret.Password)
+}
+
+//
+func DiffBetweenLists(a, b []string) []string {
+	mb := make(map[string]struct{}, len(b))
+	for _, x := range b {
+		mb[x] = struct{}{}
+	}
+	diff := []string{}
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
+}
+
+//
+func DumpMapAsJson(data map[string]interface{}, location string) (success bool, err error) {
+	success = false
+	err = nil
+
+	jsonBytes, err := json.MarshalIndent(data, "", "   ")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Tracef("json object generated:\n%s", string(jsonBytes))
+	file, err := json.MarshalIndent(data, "", " ")
+	if err != nil {
+		log.Errorf("There was a problem marshalling the object %v", err)
+	}
+	err = ioutil.WriteFile(location, file, 0644)
+	if err != nil {
+		log.Errorf("There was a problem writing the object %v", err)
+	}
+
+	// fmt.Println(string(jsonBytes))
+
+	return
 }
