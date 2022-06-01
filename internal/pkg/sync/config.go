@@ -25,6 +25,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/xelalexv/dregsy/internal/pkg/relays"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
 )
@@ -42,6 +43,20 @@ type SyncConfig struct {
 	APIVersion string              `yaml:"api-version"` // DEPRECATED
 	Lister     *ListerConfig       `yaml:"lister"`
 	Tasks      []*Task             `yaml:"tasks"`
+}
+
+//
+func (c *SyncConfig) ValidateSupport(s relays.Support) error {
+
+	for _, t := range c.Tasks {
+		for _, m := range t.Mappings {
+			if err := s.Platform(m.Platform); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 //

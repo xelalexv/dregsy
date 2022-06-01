@@ -1,6 +1,8 @@
 # Changelog
 
 ## `master`
+- support for platform selection when syncing from multi-platform images (issue #43, *alpha* feature)
+- raised default *Docker* API version to `1.41`
 - remediation of CVEs in dependencies:
     + [Improper Input Validation in GoGo Protobuf](https://github.com/advisories/GHSA-c3h9-896r-86jm)
     + [containerd CRI plugin: Insecure handling of image volumes](https://github.com/advisories/GHSA-crp2-qrr5-8pq7)

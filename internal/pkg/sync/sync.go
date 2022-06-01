@@ -25,18 +25,16 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/xelalexv/dregsy/internal/pkg/relays"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
-	"github.com/xelalexv/dregsy/internal/pkg/tags"
 )
 
 //
 type Relay interface {
 	Prepare() error
 	Dispose() error
-	Sync(srcRef, srcAuth string, srcSkiptTLSVerify bool,
-		trgtRef, trgtAuth string, trgtSkiptTLSVerify bool,
-		tags *tags.TagSet, verbose bool) error
+	Sync(opt *relays.SyncOptions) error
 }
 
 //
@@ -57,12 +55,16 @@ func New(conf *SyncConfig) (*Sync, error) {
 	switch conf.Relay {
 
 	case docker.RelayID:
-		relay, err = docker.NewDockerRelay(
-			conf.Docker, log.StandardLogger().WriterLevel(log.DebugLevel))
+		if err = conf.ValidateSupport(&docker.Support{}); err == nil {
+			relay, err = docker.NewDockerRelay(
+				conf.Docker, log.StandardLogger().WriterLevel(log.DebugLevel))
+		}
 
 	case skopeo.RelayID:
-		relay = skopeo.NewSkopeoRelay(
-			conf.Skopeo, log.StandardLogger().WriterLevel(log.DebugLevel))
+		if err = conf.ValidateSupport(&skopeo.Support{}); err == nil {
+			relay = skopeo.NewSkopeoRelay(
+				conf.Skopeo, log.StandardLogger().WriterLevel(log.DebugLevel))
+		}
 
 	default:
 		err = fmt.Errorf("relay type '%s' not supported", conf.Relay)
@@ -210,9 +212,16 @@ func (s *Sync) syncTask(t *Task) {
 				break
 			}
 
-			if err := s.relay.Sync(src, t.Source.GetAuth(), t.Source.SkipTLSVerify,
-				trgt, t.Target.GetAuth(), t.Target.SkipTLSVerify, m.tagSet,
-				t.Verbose); err != nil {
+			if err := s.relay.Sync(&relays.SyncOptions{
+				SrcRef:            src,
+				SrcAuth:           t.Source.GetAuth(),
+				SrcSkipTLSVerify:  t.Source.SkipTLSVerify,
+				TrgtRef:           trgt,
+				TrgtAuth:          t.Target.GetAuth(),
+				TrgtSkipTLSVerify: t.Target.SkipTLSVerify,
+				Tags:              m.tagSet,
+				Platform:          m.Platform,
+				Verbose:           t.Verbose}); err != nil {
 				log.Error(err)
 				t.fail(true)
 			}

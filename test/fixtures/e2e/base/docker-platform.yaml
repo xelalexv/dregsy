@@ -3,24 +3,24 @@ relay: docker
 docker:
   dockerhost: {{ .DockerHost }}
 
-lister:
-  maxItems: -1
-  cacheDuration: -1
-
 tasks:
-- name: test-dockerhub
+- name: test-platform
+  interval: 30
   verbose: true
   source:
     registry: registry.hub.docker.com
     auth: {{ .DockerhubAuth }}
-    lister:
-      type: dockerhub # for including private repos
   target:
     registry: 127.0.0.1:5000
     auth: {{ .LocalAuth }}
     # not actually supported for Docker relay, but need this for validation
     skip-tls-verify: true
   mappings:
-  - from: regex:xelalex/dregsy-dummy-.*
-    to: mapping-docker/dh
-    tags: ["latest"]
+  - from: library/busybox
+    to: base-docker/library/busybox-arm64
+    tags: ['latest']
+    platform: linux/arm64/v8
+  - from: library/busybox
+    to: base-docker/library/busybox-amd64
+    tags: ['latest']
+    platform: linux/amd64

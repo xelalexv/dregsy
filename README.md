@@ -23,8 +23,8 @@ skopeo:
 docker:
   # Docker host to use as the relay
   dockerhost: unix:///var/run/docker.sock
-  # Docker API version to use, defaults to 1.24
-  api-version: 1.24
+  # Docker API version to use, defaults to 1.41
+  api-version: 1.41
 
 # settings for image matching (see below)
 lister:
@@ -66,18 +66,22 @@ tasks:
       skip-tls-verify: true
 
     # 'mappings' is a list of 'from':'to' pairs that define mappings of image
-    # paths in the source registry to paths in the destination; 'from' is
-    # required, while 'to' can be dropped if the path should remain the same as
-    # 'from'. Regular expressions are supported in both fields (read on below
-    # for more details). Additionally, the tags being synced for a mapping can
-    # be limited by providing a 'tags' list. This list may contain semver and
-    # regular expressions filters (see below). When omitted, all image tags are
-    # synced.
+    # paths in the source registry to paths in the destination:
+    #  - 'from' is required, while 'to' can be dropped if the path should remain
+    #     the same as 'from'.
+    #  - Regular expressions are supported in both fields (read on below for
+    #    more details).
+    #  - The tags being synced for a mapping can be limited by providing a 'tags'
+    #    list. This list may contain semver and regular expressions filters
+    #    (see below). When omitted, all image tags are synced.
+    #  - With 'platform', the image to sync from a multi-platform source image
+    #    can be selected (see below).
     mappings:
       - from: test/image
         to: archive/test/image
         tags: ['0.1.0', '0.1.1']
       - from: test/another-image
+        platform: linux/arm64/v8
 ```
 
 
@@ -85,9 +89,10 @@ tasks:
 
 When syncing via a *Docker* relay, do not use the same *Docker* daemon for building local images (even better: don't use it for anything else but syncing). There is a risk that the reference to a locally built image clashes with the shorthand notation for a reference to an image on `docker.io`. E.g. if you built a local image `busybox`, then this would be indistinguishable from the shorthand `busybox` pointing to `docker.io/library/busybox`. One way to avoid this is to use `registry.hub.docker.com` instead of `docker.io` in references, which would never get shortened. If you're not syncing from/to `docker.io`, then all of this is not a concern.
 
+
 ### Image Matching
 
-The `mappings` section of a task can employ *Go* regular expressions for describing what images to sync, and how to change the destination path and name of an image. Details about how this works and examples can be found in this [design document](doc/design-image-matching.md). Note however that this is still an *alpha* feature, so things may not quite work as expected. Also keep in mind that regular expressions can be surprising at times, so it would be a good idea to try them out first in a *Go* playground. You may otherwise potentially sync large numbers of images, clogging your target registry, or running into rate limits. Feedback about this feature is encouraged! 
+The `mappings` section of a task can employ *Go* regular expressions for describing what images to sync, and how to change the destination path and name of an image. Details about how this works and examples can be found in this [design document](doc/design-image-matching.md). Note however that this is still a *beta* feature, so things may not quite work as expected. Also keep in mind that regular expressions can be surprising at times, so it would be a good idea to try them out first in a *Go* playground. You may otherwise potentially sync large numbers of images, clogging your target registry, or running into rate limits. Feedback about this feature is encouraged! 
 
 
 ### Tag Filtering
@@ -104,9 +109,18 @@ tags:
 
 This would sync all tags describing versions equal to or larger than `1.31.0`, but lower than `1.31.9`, via the `semver:` filter. The `regex:` filter additionally syncs any `1.26.`x image with suffix `-glibc`, `-uclibc`, or `-musl`. Finally, the verbatim tags `1.29.4` and `latest` are also synced.
 
-Note that tag filtering is still an *alpha* feature. Also, the tags of an image need to conform to the *semver* specification *2.0.0* in order to be considered during filtering. The implementation uses the [blang/semver](https://github.com/blang/semver) lib. Have a look at their page or [the GoDoc](https://pkg.go.dev/github.com/blang/semver/v4) for more info on how to write *semver* filter expressions. Semver filtering tolerates and handles tags starting with a `v` prefix. Semver filter expressions however must not use a `v` prefix. Regex filters use standard *Go* regular expressions. When the first non-whitespace character after `regex:` is `!`, the filter will use inverted match. Keep in mind that when a regex contains a backslash, you need to place it inside single quotes to keep the YAML valid.
+Note that tag filtering is still a *beta* feature. Also, the tags of an image need to conform to the *semver* specification *2.0.0* in order to be considered during filtering. The implementation uses the [blang/semver](https://github.com/blang/semver) lib. Have a look at their page or [the GoDoc](https://pkg.go.dev/github.com/blang/semver/v4) for more info on how to write *semver* filter expressions. Semver filtering tolerates and handles tags starting with a `v` prefix. Semver filter expressions however must not use a `v` prefix. Regex filters use standard *Go* regular expressions. When the first non-whitespace character after `regex:` is `!`, the filter will use inverted match. Keep in mind that when a regex contains a backslash, you need to place it inside single quotes to keep the YAML valid.
 
 You can add multiple `semver:` and `regex:` filters under `tags`. Note however that the filters are simply ORed, i.e. a tag is synced if it satisfies at least one of the items under `tags`, be it semver, regex, or verbatim. So this is not a filter chain. Also, no sanity checks are done on the filters, so care must be taken to avoid competing or contradicting filters that select all or nothing at all.
+
+
+### Platform Selection (*Multi-Platform* Source Images)
+
+When the source image is a *multi-platform* image, the platform image adequate for the system on which *dregsy* runs is synced by default. Where this is not applicable, the desired platform can be specified via the `platform` setting, separately for each mapping. To sync all available platform images, `platform: all` can be used. Note however that this shorthand is only supported by the *Skopeo* relay.
+
+To sync a selection of platform images from the same multi-platform source image, several mappings with according `platform` settings can be defined. However, be careful not to map them into the same destination, i.e. use different `to` settings. Otherwise, the synced platform images will "overwrite" each other, with only the last image synced being available from the target repository.
+
+Note that platform selection is still an *alpha* feature.
 
 
 ### Repository Validation & Client Authentication with TLS

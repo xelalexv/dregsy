@@ -1,0 +1,18 @@
+relay: docker
+
+docker:
+  dockerhost: unix:///var/run/docker.sock
+
+tasks:
+- name: test-platform-all
+  interval: 30
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: 127.0.0.1:5000
+  mappings:
+  - from: library/busybox
+    to: docker/library/busybox
+    tags: ['latest']
+    platform: all

@@ -23,7 +23,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/xelalexv/dregsy/internal/pkg/tags"
+	"github.com/xelalexv/dregsy/internal/pkg/relays"
 	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
@@ -33,6 +33,14 @@ const RelayID = "skopeo"
 type RelayConfig struct {
 	Binary   string `yaml:"binary"`
 	CertsDir string `yaml:"certs-dir"`
+}
+
+//
+type Support struct{}
+
+//
+func (s *Support) Platform(p string) error {
+	return nil
 }
 
 //
@@ -62,12 +70,15 @@ func NewSkopeoRelay(conf *RelayConfig, out io.Writer) *SkopeoRelay {
 
 //
 func (r *SkopeoRelay) Prepare() error {
+
 	bufOut := new(bytes.Buffer)
 	if err := runSkopeo(bufOut, nil, true, "--version"); err != nil {
 		return fmt.Errorf("cannot execute skopeo: %v", err)
 	}
+
 	log.Info(bufOut.String())
 	log.WithField("relay", RelayID).Info("relay ready")
+
 	return nil
 }
 
@@ -77,32 +88,30 @@ func (r *SkopeoRelay) Dispose() error {
 }
 
 //
-func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
-	destRef, destAuth string, destSkipTLSVerify bool, ts *tags.TagSet,
-	verbose bool) error {
+func (r *SkopeoRelay) Sync(opt *relays.SyncOptions) error {
 
-	srcCreds := util.DecodeJSONAuth(srcAuth)
-	destCreds := util.DecodeJSONAuth(destAuth)
+	srcCreds := util.DecodeJSONAuth(opt.SrcAuth)
+	destCreds := util.DecodeJSONAuth(opt.TrgtAuth)
 
 	cmd := []string{
 		"--insecure-policy",
 		"copy",
 	}
 
-	if srcSkipTLSVerify {
+	if opt.SrcSkipTLSVerify {
 		cmd = append(cmd, "--src-tls-verify=false")
 	}
-	if destSkipTLSVerify {
+	if opt.TrgtSkipTLSVerify {
 		cmd = append(cmd, "--dest-tls-verify=false")
 	}
 
 	srcCertDir := ""
-	repo, _, _ := util.SplitRef(srcRef)
+	repo, _, _ := util.SplitRef(opt.SrcRef)
 	if repo != "" {
 		srcCertDir = CertsDirForRepo(repo)
 		cmd = append(cmd, fmt.Sprintf("--src-cert-dir=%s", srcCertDir))
 	}
-	repo, _, _ = util.SplitRef(destRef)
+	repo, _, _ = util.SplitRef(opt.TrgtRef)
 	if repo != "" {
 		cmd = append(cmd, fmt.Sprintf(
 			"--dest-cert-dir=%s/%s", certsBaseDir, withoutPort(repo)))
@@ -115,8 +124,8 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 		cmd = append(cmd, fmt.Sprintf("--dest-creds=%s", destCreds))
 	}
 
-	tags, err := ts.Expand(func() ([]string, error) {
-		return ListAllTags(srcRef, srcCreds, srcCertDir, srcSkipTLSVerify)
+	tags, err := opt.Tags.Expand(func() ([]string, error) {
+		return ListAllTags(opt.SrcRef, srcCreds, srcCertDir, opt.SrcSkipTLSVerify)
 	})
 
 	if err != nil {
@@ -124,11 +133,25 @@ func (r *SkopeoRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	}
 
 	errs := false
-	for _, tag := range tags {
-		log.WithField("tag", tag).Info("syncing tag")
-		if err := runSkopeo(r.wrOut, r.wrOut, verbose, append(cmd,
-			fmt.Sprintf("docker://%s:%s", srcRef, tag),
-			fmt.Sprintf("docker://%s:%s", destRef, tag))...); err != nil {
+
+	for _, t := range tags {
+
+		log.WithFields(
+			log.Fields{"tag": t, "platform": opt.Platform}).Info("syncing tag")
+
+		rc := append(cmd,
+			fmt.Sprintf("docker://%s:%s", opt.SrcRef, t),
+			fmt.Sprintf("docker://%s:%s", opt.TrgtRef, t))
+
+		switch opt.Platform {
+		case "":
+		case "all":
+			rc = append(rc, "--all")
+		default:
+			rc = addPlatformOverrides(rc, opt.Platform)
+		}
+
+		if err := runSkopeo(r.wrOut, r.wrOut, opt.Verbose, rc...); err != nil {
 			log.Error(err)
 			errs = true
 		}

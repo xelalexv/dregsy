@@ -50,6 +50,29 @@ func SplitRef(ref string) (repo, path, tag string) {
 }
 
 //
+func SplitPlatform(p string) (os, arch, variant string) {
+
+	ix := strings.Index(p, "/")
+
+	if ix == -1 {
+		os = p
+		arch = ""
+	} else {
+		os = p[:ix]
+		arch = p[ix+1:]
+	}
+
+	ix = strings.Index(arch, "/")
+
+	if ix > -1 {
+		variant = arch[ix+1:]
+		arch = arch[:ix]
+	}
+
+	return
+}
+
+//
 func CompileRegex(v string, lineMatch bool) (*regexp.Regexp, error) {
 	if lineMatch {
 		if !strings.HasPrefix(v, "^") {

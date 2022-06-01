@@ -184,23 +184,27 @@ func match(filterRepo, filterPath, filterTag, ref string) (bool, error) {
 }
 
 //
-func (dc *dockerClient) pullImage(ref string, allTags bool, auth string,
+func (dc *dockerClient) pullImage(ref string, allTags bool, platform, auth string,
 	verbose bool) error {
 	opts := &types.ImagePullOptions{
 		All:          allTags,
 		RegistryAuth: auth,
+		Platform:     platform,
 	}
 	rc, err := dc.client.ImagePull(context.Background(), ref, *opts)
 	return dc.handleLog(rc, err, verbose)
 }
 
 //
-func (dc *dockerClient) pushImage(image string, allTags bool, auth string,
+func (dc *dockerClient) pushImage(image string, allTags bool, platform, auth string,
 	verbose bool) error {
 
 	opts := &types.ImagePushOptions{
 		All:          allTags,
 		RegistryAuth: auth,
+		// NOTE: Platform currently does not seem to be used by
+		//       the Docker client lib
+		Platform: platform,
 	}
 	rc, err := dc.client.ImagePush(context.Background(), image, *opts)
 	return dc.handleLog(rc, err, verbose)

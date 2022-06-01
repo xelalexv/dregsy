@@ -18,3 +18,4 @@ tasks:
   - from: library/busybox
     to: skopeo/library/busybox
     tags: ['1.29.2', '1.29.3', 'latest']
+    platform: linux/arm/v6

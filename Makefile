@@ -111,7 +111,7 @@ endif
 TEST_ALPINE ?= y
 TEST_UBUNTU ?= y
 
-TEST_CLEANUP = "127.0.0.1:5000/*/*/*/*" "*/*/*/busybox" \
+TEST_CLEANUP = "127.0.0.1:5000/*/*/*/*" "*/*/*/busybox*" \
 		"*/cloudrun/container/hello" "registry.hub.docker.com/library/busybox" \
 		"*/jenkins/jnlp-slave" "*/*/*/hello"
 

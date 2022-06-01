@@ -26,6 +26,8 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
 const defaultSkopeoBinary = "skopeo"
@@ -52,12 +54,41 @@ func CertsDirForRepo(r string) string {
 }
 
 //
-func ListAllTags(ref, creds, certDir string, skipTLSVerify bool) (
-	[]string, error) {
+func ListAllTags(ref, creds, certDir string, skipTLSVerify bool) ([]string, error) {
 
-	cmd := []string{
-		"list-tags",
+	ret, err := info([]string{"list-tags"}, ref, creds, certDir, skipTLSVerify)
+	if err != nil {
+		return nil,
+			fmt.Errorf("error listing image tags for ref '%s': %v", ref, err)
 	}
+
+	list, err := decodeTagList(ret)
+	if err != nil {
+		return nil, err
+	}
+	return list.Tags, nil
+}
+
+//
+func Inspect(ref, platform, format, creds, certDir string, skipTLSVerify bool) (
+	string, error) {
+
+	cmd := addPlatformOverrides([]string{"inspect"}, platform)
+	if format != "" {
+		cmd = append(cmd, fmt.Sprintf("--format=%s", format))
+	}
+
+	if insp, err := info(cmd, ref, creds, certDir, skipTLSVerify); err != nil {
+		return "", fmt.Errorf(
+			"error inspecting image for ref '%s': %v", ref, err)
+	} else {
+		return strings.TrimSpace(string(insp)), nil
+	}
+}
+
+//
+func info(cmd []string, ref, creds, certDir string, skipTLSVerify bool) (
+	[]byte, error) {
 
 	if skipTLSVerify {
 		cmd = append(cmd, "--tls-verify=false")
@@ -77,16 +108,29 @@ func ListAllTags(ref, creds, certDir string, skipTLSVerify bool) (
 	bufErr := new(bytes.Buffer)
 
 	if err := runSkopeo(bufOut, bufErr, true, cmd...); err != nil {
-		return nil,
-			fmt.Errorf("error listing image tags for ref '%s': %s, %v",
-				ref, bufErr.String(), err)
+		return nil, fmt.Errorf("%s, %v", bufErr.String(), err)
 	}
 
-	list, err := decodeTagList(bufOut.Bytes())
-	if err != nil {
-		return nil, err
+	return bufOut.Bytes(), nil
+}
+
+//
+func addPlatformOverrides(cmd []string, platform string) []string {
+
+	if platform != "" {
+		os, arch, variant := util.SplitPlatform(platform)
+		if os != "" {
+			cmd = append(cmd, fmt.Sprintf("--override-os=%s", os))
+		}
+		if arch != "" {
+			cmd = append(cmd, fmt.Sprintf("--override-arch=%s", arch))
+		}
+		if variant != "" {
+			cmd = append(cmd, fmt.Sprintf("--override-variant=%s", variant))
+		}
 	}
-	return list.Tags, nil
+
+	return cmd
 }
 
 //

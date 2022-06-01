@@ -1,10 +1,8 @@
-relay: docker
-
-docker:
-  dockerhost: {{ .DockerHost }}
+relay: skopeo
 
 tasks:
-- name: test-docker
+- name: test-platform-all
+  interval: 30
   verbose: true
   source:
     registry: registry.hub.docker.com
@@ -12,9 +10,9 @@ tasks:
   target:
     registry: 127.0.0.1:5000
     auth: {{ .LocalAuth }}
-    # not actually supported for Docker relay, but need this for validation
     skip-tls-verify: true
   mappings:
   - from: library/busybox
-    to: base-docker/oneoff/busybox
+    to: base-skopeo/library/busybox-all
     tags: ['latest']
+    platform: all
