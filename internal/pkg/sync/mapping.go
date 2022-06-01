@@ -30,9 +30,10 @@ const RegexpPrefix = "regex:"
 
 //
 type Mapping struct {
-	From string   `yaml:"from"`
-	To   string   `yaml:"to"`
-	Tags []string `yaml:"tags"`
+	From     string   `yaml:"from"`
+	To       string   `yaml:"to"`
+	Tags     []string `yaml:"tags"`
+	Platform string   `yaml:"platform"`
 	//
 	fromFilter *regexp.Regexp
 	toFilter   *regexp.Regexp

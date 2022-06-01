@@ -24,8 +24,8 @@ import (
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/xelalexv/dregsy/internal/pkg/relays"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
-	"github.com/xelalexv/dregsy/internal/pkg/tags"
 	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
@@ -35,6 +35,18 @@ const RelayID = "docker"
 type RelayConfig struct {
 	DockerHost string `yaml:"dockerhost"`
 	APIVersion string `yaml:"api-version"`
+}
+
+//
+type Support struct{}
+
+//
+func (s *Support) Platform(p string) error {
+	if p == "all" {
+		return fmt.Errorf(
+			"relay '%s' does not support mappings with 'platform: all'", RelayID)
+	}
+	return nil
 }
 
 //
@@ -48,7 +60,7 @@ func NewDockerRelay(conf *RelayConfig, out io.Writer) (*DockerRelay, error) {
 	relay := &DockerRelay{}
 
 	dockerHost := client.DefaultDockerHost
-	apiVersion := "1.24"
+	apiVersion := "1.41"
 
 	if conf != nil {
 		if conf.DockerHost != "" {
@@ -90,26 +102,31 @@ func (r *DockerRelay) Dispose() error {
 }
 
 //
-func (r *DockerRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
-	trgtRef, trgtAuth string, trgtSkipTLSVerify bool, ts *tags.TagSet,
-	verbose bool) error {
+func (r *DockerRelay) Sync(opt *relays.SyncOptions) error {
 
-	log.WithField("ref", srcRef).Info("pulling source image")
+	log.WithFields(log.Fields{
+		"ref":      opt.SrcRef,
+		"platform": opt.Platform}).Info("pulling source image")
+
+	if opt.Platform == "all" {
+		return fmt.Errorf("'Platform: all' sync option not supported")
+	}
 
 	var tags []string
 	var err error
 
 	// When no tags are specified, a simple docker pull without a tag will get
 	// all tags. So for Docker relay, we don't need to list tags in this case.
-	if !ts.IsEmpty() {
+	if !opt.Tags.IsEmpty() {
 		srcCertDir := ""
-		repo, _, _ := util.SplitRef(srcRef)
+		repo, _, _ := util.SplitRef(opt.SrcRef)
 		if repo != "" {
 			srcCertDir = skopeo.CertsDirForRepo(repo)
 		}
-		tags, err = ts.Expand(func() ([]string, error) {
+		tags, err = opt.Tags.Expand(func() ([]string, error) {
 			return skopeo.ListAllTags(
-				srcRef, util.DecodeJSONAuth(srcAuth), srcCertDir, srcSkipTLSVerify)
+				opt.SrcRef, util.DecodeJSONAuth(opt.SrcAuth),
+				srcCertDir, opt.SrcSkipTLSVerify)
 		})
 
 		if err != nil {
@@ -118,15 +135,17 @@ func (r *DockerRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	}
 
 	if len(tags) == 0 {
-		if err = r.pull(srcRef, srcAuth, true, verbose); err != nil {
+		if err = r.pull(opt.SrcRef, opt.Platform, opt.SrcAuth,
+			true, opt.Verbose); err != nil {
 			return fmt.Errorf(
-				"error pulling source image '%s': %v", srcRef, err)
+				"error pulling source image '%s': %v", opt.SrcRef, err)
 		}
 
 	} else {
 		for _, tag := range tags {
-			srcRefTagged := fmt.Sprintf("%s:%s", srcRef, tag)
-			if err = r.pull(srcRefTagged, srcAuth, false, verbose); err != nil {
+			srcRefTagged := fmt.Sprintf("%s:%s", opt.SrcRef, tag)
+			if err = r.pull(srcRefTagged, opt.Platform, opt.SrcAuth,
+				false, opt.Verbose); err != nil {
 				return fmt.Errorf(
 					"error pulling source image '%s': %v", srcRefTagged, err)
 			}
@@ -137,21 +156,19 @@ func (r *DockerRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 	var srcImages []*image
 
 	if len(tags) == 0 {
-		srcImages, err = r.list(srcRef)
+		srcImages, err = r.list(opt.SrcRef)
 		if err != nil {
-			log.Error(
-				fmt.Errorf("error listing all tags of source image '%s': %v",
-					srcRef, err))
+			log.Errorf("error listing all tags of source image '%s': %v",
+				opt.SrcRef, err)
 		}
 
 	} else {
 		for _, tag := range tags {
-			srcRefTagged := fmt.Sprintf("%s:%s", srcRef, tag)
+			srcRefTagged := fmt.Sprintf("%s:%s", opt.SrcRef, tag)
 			srcImageTagged, err := r.list(srcRefTagged)
 			if err != nil {
-				log.Error(
-					fmt.Errorf("error listing source image '%s': %v",
-						srcRefTagged, err))
+				log.Errorf(
+					"error listing source image '%s': %v", srcRefTagged, err)
 			}
 			srcImages = append(srcImages, srcImageTagged...)
 		}
@@ -161,16 +178,19 @@ func (r *DockerRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 		log.Infof(" - %s", img.refWithTags())
 	}
 
-	log.WithField("ref", trgtRef).Info("setting tags for target image")
+	log.WithField("ref", opt.TrgtRef).Info("setting tags for target image")
 
-	_, err = r.tag(srcImages, trgtRef)
+	_, err = r.tag(srcImages, opt.TrgtRef)
 	if err != nil {
 		return fmt.Errorf("error setting tags: %v", err)
 	}
 
-	log.WithField("ref", trgtRef).Info("pushing target image")
+	log.WithFields(log.Fields{
+		"ref":      opt.TrgtRef,
+		"platform": opt.Platform}).Info("pushing target image")
 
-	if err := r.push(trgtRef, trgtAuth, verbose); err != nil {
+	if err := r.push(
+		opt.TrgtRef, opt.Platform, opt.TrgtAuth, opt.Verbose); err != nil {
 		return fmt.Errorf("error pushing target image: %v", err)
 	}
 
@@ -178,8 +198,8 @@ func (r *DockerRelay) Sync(srcRef, srcAuth string, srcSkipTLSVerify bool,
 }
 
 //
-func (r *DockerRelay) pull(ref, auth string, allTags, verbose bool) error {
-	return r.client.pullImage(ref, allTags, auth, verbose)
+func (r *DockerRelay) pull(ref, platform, auth string, allTags, verbose bool) error {
+	return r.client.pullImage(ref, allTags, platform, auth, verbose)
 }
 
 //
@@ -214,6 +234,6 @@ func (r *DockerRelay) tag(images []*image, targetRef string) (
 }
 
 //
-func (r *DockerRelay) push(ref, auth string, verbose bool) error {
-	return r.client.pushImage(ref, true, auth, verbose)
+func (r *DockerRelay) push(ref, platform, auth string, verbose bool) error {
+	return r.client.pushImage(ref, true, platform, auth, verbose)
 }

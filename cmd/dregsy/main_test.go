@@ -33,6 +33,18 @@ import (
 )
 
 //
+var testPlatforms []string = []string{
+	"linux/amd64",
+	"linux/386",
+	"linux/mips64le",
+	"linux/ppc64le",
+	"linux/arm/v5",
+	"linux/arm/v6",
+	"linux/arm/v7",
+	"linux/arm64/v8",
+}
+
+//
 func TestE2EOneoff(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/base/oneoff.yaml",
 		0, 0, true, nil, test.GetParams())
@@ -41,6 +53,12 @@ func TestE2EOneoff(t *testing.T) {
 //
 func TestE2EDocker(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/base/docker.yaml",
+		1, 0, true, nil, test.GetParams())
+}
+
+//
+func TestE2EDockerPlatform(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/base/docker-platform.yaml",
 		1, 0, true, nil, test.GetParams())
 }
 
@@ -153,6 +171,18 @@ func TestE2EDockerTagSetsRegex(t *testing.T) {
 //
 func TestE2ESkopeo(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo.yaml",
+		1, 0, true, nil, test.GetParams())
+}
+
+//
+func TestE2ESkopeoPlatform(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-platform.yaml",
+		1, 0, true, nil, test.GetParams())
+}
+
+//
+func TestE2ESkopeoAllPlatforms(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-platform-all.yaml",
 		1, 0, true, nil, test.GetParams())
 }
 
@@ -328,6 +358,54 @@ func validateAgainstTaskMapping(th *test.TestHelper, c *sync.SyncConfig) {
 				"", t.Target.SkipTLSVerify)
 			th.AssertNoError(err)
 			th.AssertEquivalentSlices(m.Tags, tags)
+			validatePlatforms(th, ref, t, m)
+		}
+	}
+}
+
+//
+func validatePlatforms(th *test.TestHelper, ref string, task *sync.Task,
+	mapping *sync.Mapping) {
+
+	if mapping.Platform == "" {
+		return
+	}
+
+	plts := make(map[string]bool)
+
+	if mapping.Platform == "all" {
+		for _, p := range testPlatforms {
+			plts[p] = true
+		}
+	} else {
+		for _, p := range testPlatforms {
+			plts[p] = p == mapping.Platform
+		}
+		plts[mapping.Platform] = true
+	}
+
+	for _, t := range mapping.Tags {
+
+		for plt, exp := range plts {
+
+			info, err := skopeo.Inspect(
+				fmt.Sprintf("%s:%s", ref, t), plt, "{{.Os}}/{{.Architecture}}",
+				util.DecodeJSONAuth(task.Target.GetAuth()),
+				"", task.Target.SkipTLSVerify)
+			th.AssertNoError(err)
+
+			// FIXME: Skopeo inspect only shows OS and architecture, but not
+			//        variant. Also, for platforms that are not present, it
+			//        does not raise an error and instead returns info for the
+			//        "default" platform. When testing syncing of a single
+			//        platform, that's the default.
+			var os, arch string
+			if exp {
+				os, arch, _ = util.SplitPlatform(plt)
+			} else {
+				os, arch, _ = util.SplitPlatform(mapping.Platform)
+			}
+			th.AssertEqual(fmt.Sprintf("%s/%s", os, arch), info)
 		}
 	}
 }
