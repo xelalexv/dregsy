@@ -9,9 +9,7 @@
 - upgrades:
     + switched to *Go* 1.18
     + switched to *Ubuntu 22.04* and *Alpine 3.15*
-    + *Skopeo* to 1.5.2 (*Alpine*) & 1.4.2 (*Ubuntu*)
-
-        *Note*: Due to switching to 22.04, we can now install *Skopeo* on *Ubuntu* from OS packages. Latest version there is 1.4.2. *Alpine* however skipped from 1.3 to 1.5, so for the time being, we will have to live with different minor versions of *Skopeo* in the two images.
+    + *Skopeo* to 1.8.0 (own build)
 
 ## `0.4.2`
 - remediation of CVEs in dependencies:
