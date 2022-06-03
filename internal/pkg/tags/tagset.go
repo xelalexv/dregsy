@@ -18,7 +18,6 @@ package tags
 
 import (
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -45,7 +44,7 @@ func NewTagSet(tags []string) (*TagSet, error) {
 type TagSet struct {
 	verbatim []string
 	semver   []semver.Range
-	regex    []*regex
+	regex    []*util.Regex
 }
 
 //
@@ -86,7 +85,7 @@ func (ts *TagSet) addSemver(s string) error {
 
 //
 func (ts *TagSet) addRegex(r string) error {
-	reg, err := newRegex(strings.TrimSpace(r[len(RegexpPrefix):]))
+	reg, err := util.NewRegex(strings.TrimSpace(r[len(RegexpPrefix):]))
 	if err != nil {
 		return err
 	}
@@ -194,7 +193,7 @@ func (ts *TagSet) expandRegex(tags []string) []string {
 	var ret []string
 	for _, t := range tags {
 		for _, regex := range ts.regex {
-			if regex.matches(t) {
+			if regex.Matches(t) {
 				ret = append(ret, t)
 				break
 			}
@@ -220,35 +219,4 @@ func isSemver(tag string) bool {
 //
 func isRegex(tag string) bool {
 	return strings.HasPrefix(tag, RegexpPrefix)
-}
-
-//
-func newRegex(r string) (*regex, error) {
-
-	r = strings.TrimSpace(r)
-	inverted := strings.HasPrefix(r, "!")
-	if inverted {
-		r = r[1:]
-	}
-
-	reg, err := util.CompileRegex(r, true)
-	if err != nil {
-		return nil, err
-	}
-
-	return &regex{expr: reg, inverted: inverted}, nil
-}
-
-//
-type regex struct {
-	expr     *regexp.Regexp
-	inverted bool
-}
-
-//
-func (r *regex) matches(s string) bool {
-	if r.inverted {
-		return !r.expr.MatchString(s)
-	}
-	return r.expr.MatchString(s)
 }

@@ -28,6 +28,7 @@ import (
 	"github.com/xelalexv/dregsy/internal/pkg/relays"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
+	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
 //
@@ -106,7 +107,16 @@ func (s *Sync) Dispose() {
 }
 
 //
-func (s *Sync) SyncFromConfig(conf *SyncConfig) error {
+func (s *Sync) SyncFromConfig(conf *SyncConfig, taskFilter string) error {
+
+	if taskFilter == "" {
+		taskFilter = ".*"
+	}
+
+	tf, err := util.NewRegex(taskFilter)
+	if err != nil {
+		return fmt.Errorf("invalid task filter: %v", err)
+	}
 
 	if err := s.relay.Prepare(); err != nil {
 		return err
@@ -114,7 +124,7 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig) error {
 
 	// one-off tasks
 	for _, t := range conf.Tasks {
-		if t.Interval == 0 {
+		if t.Interval == 0 && tf.Matches(t.Name) {
 			s.syncTask(t)
 		}
 	}
@@ -124,7 +134,7 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig) error {
 	ticking := false
 
 	for _, t := range conf.Tasks {
-		if t.Interval > 0 {
+		if t.Interval > 0 && tf.Matches(t.Name) {
 			t.startTicking(c)
 			ticking = true
 		}

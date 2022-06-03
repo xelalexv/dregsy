@@ -20,7 +20,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -70,19 +69,6 @@ func SplitPlatform(p string) (os, arch, variant string) {
 	}
 
 	return
-}
-
-//
-func CompileRegex(v string, lineMatch bool) (*regexp.Regexp, error) {
-	if lineMatch {
-		if !strings.HasPrefix(v, "^") {
-			v = fmt.Sprintf("^%s", v)
-		}
-		if !strings.HasSuffix(v, "$") {
-			v = fmt.Sprintf("%s$", v)
-		}
-	}
-	return regexp.Compile(v)
 }
 
 //
