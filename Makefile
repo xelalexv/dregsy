@@ -19,6 +19,7 @@ SHELL = /bin/bash
 
 REPO = dregsy
 DREGSY_VERSION = $$(git describe --always --tag --dirty)
+SKOPEO_VERSION = v1.8.0
 
 ROOT = $(shell pwd)
 BUILD_OUTPUT =_build
@@ -170,12 +171,16 @@ imgdregsy:
 #
 	echo -e "\nBuilding Alpine-based image...\n"
 	docker build -t xelalex/$(REPO):latest-alpine \
-		-f ./hack/dregsy.alpine.Dockerfile --build-arg binaries=$(BINARIES) .
+		--build-arg binaries=$(BINARIES) \
+		--build-arg SKOPEO_VERSION=$(SKOPEO_VERSION) \
+		-f ./hack/dregsy.alpine.Dockerfile .
 	# for historical reasons, the `xelalex/dregsy` image is the Alpine image
 	docker tag xelalex/$(REPO):latest-alpine xelalex/$(REPO):latest
 	echo -e "\n\nBuilding Ubuntu-based image...\n"
 	docker build -t xelalex/$(REPO):latest-ubuntu \
-		-f ./hack/dregsy.ubuntu.Dockerfile --build-arg binaries=$(BINARIES) .
+		--build-arg binaries=$(BINARIES) \
+		--build-arg SKOPEO_VERSION=$(SKOPEO_VERSION) \
+		-f ./hack/dregsy.ubuntu.Dockerfile .
 	echo -e "\nDone\n"
 
 

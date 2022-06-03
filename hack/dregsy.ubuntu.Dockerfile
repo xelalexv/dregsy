@@ -14,6 +14,24 @@
 # limitations under the License.
 #
 
+# Skopeo build
+#
+FROM golang:1.17.11@sha256:dceb25b534d8da2aa50da5c6489fc4120db24f24dcf8b3b1862d1a8cebf1210b as skopeo
+
+ARG SKOPEO_VERSION
+
+WORKDIR /go/src/github.com/containers/skopeo
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends --fix-missing \
+        git libbtrfs-dev libgpgme-dev liblvm2-dev \
+    && git clone --single-branch --branch "${SKOPEO_VERSION}" \
+        https://github.com/containers/skopeo.git . \
+    && go build -ldflags="-s -w" -o bin/skopeo ./cmd/skopeo
+
+
+# dregsy image
+#
 FROM docker.io/ubuntu:22.04@sha256:aa6c2c047467afc828e77e306041b7fa4a65734fe3449a54aa9c280822b0d87d
 
 LABEL maintainer "vollschwitz@gmx.net"
@@ -34,7 +52,8 @@ RUN apt-get update && \
         apt-utils \
         gpg \
         curl \
-        skopeo=1.4.1+ds1-1 && \
+        libgpgme11 \
+        libdevmapper1.02.1 && \
     apt-get clean -y && \
     rm -rf \
         /var/cache/debconf/* \
@@ -43,6 +62,7 @@ RUN apt-get update && \
         /tmp/* \
         /var/tmp/*
 
+COPY --from=skopeo /go/src/github.com/containers/skopeo/bin/skopeo /usr/bin
 COPY ${binaries}/dregsy /usr/local/bin
 
 CMD ["dregsy", "-config=config.yaml"]

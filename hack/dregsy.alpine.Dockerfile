@@ -14,18 +14,36 @@
 # limitations under the License.
 #
 
+# Skopeo build, taken from https://github.com/bdwyertech/docker-skopeo
+#
+FROM golang:1.17.11-alpine3.15@sha256:a063835853ab2d124360440a65b43c046d5f39685e7e3d054cc6b71fe9f5d598 as skopeo
+
+ARG SKOPEO_VERSION
+
+WORKDIR /go/src/github.com/containers/skopeo
+
+RUN apk add --no-cache --virtual .build-deps \
+        git build-base btrfs-progs-dev gpgme-dev linux-headers lvm2-dev \
+    && git clone --single-branch --branch "${SKOPEO_VERSION}" \
+        https://github.com/containers/skopeo.git . \
+    && go build -ldflags="-s -w" -o bin/skopeo ./cmd/skopeo \
+    && apk del .build-deps
+
+
+# dregsy image
+#
 FROM alpine:3.15.4@sha256:a777c9c66ba177ccfea23f2a216ff6721e78a662cd17019488c417135299cd89
 
 LABEL maintainer "vollschwitz@gmx.net"
 
 ARG binaries
 
-#
-# check for available Skopeo here (mind the branch in URL):
-#	https://pkgs.alpinelinux.org/packages?name=skopeo&branch=v3.15&arch=x86_64
-#
-RUN apk --update add --no-cache skopeo=1.5.2-r1 ca-certificates
+RUN apk update && apk upgrade && apk --update add --no-cache \
+    ca-certificates \
+    device-mapper-libs \
+    gpgme
 
+COPY --from=skopeo /go/src/github.com/containers/skopeo/bin/skopeo /usr/bin
 COPY ${binaries}/dregsy /usr/local/bin
 
 CMD ["dregsy", "-config=config.yaml"]
