@@ -81,6 +81,7 @@ func main() {
 
 	fs := flag.NewFlagSet("dregsy", flag.ContinueOnError)
 	configFile := fs.String("config", "", "path to config file")
+	taskFilter := fs.String("run", "", "task filter regex")
 
 	if testRound {
 		if len(testArgs) > 0 {
@@ -94,7 +95,8 @@ func main() {
 
 	if len(*configFile) == 0 {
 		version()
-		fmt.Println("synopsis: dregsy -config={config file}")
+		fmt.Println(
+			"synopsis: dregsy -config={config file} [-run {task name regex}]")
 		exit(1)
 	}
 
@@ -110,7 +112,7 @@ func main() {
 		testSync <- s
 	}
 
-	err = s.SyncFromConfig(conf)
+	err = s.SyncFromConfig(conf, *taskFilter)
 	s.Dispose()
 
 	log.Debug("exit main")
