@@ -29,6 +29,7 @@ ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 
 GO_IMAGE = golang:1.18.2@sha256:a9d1f28367890615df70c45ba54ea69a8e95e202517e7114942c2f0449ce1de9
 GOOS = $(shell uname -s | tr A-Z a-z)
+GOARCH = $(shell ./hack/devenvutil get_architecture)
 
 ## makerc
 # You need to set the following parameters in configuration file ${DIM}.makerc${NRM}, with every line
@@ -154,10 +155,11 @@ publish:
 dregsy: prep
 #	build the ${ITL}dregsy${NRM} binary
 #
+	echo "os: $(GOOS), arch: $(GOARCH)"
 	docker run --rm --user $(shell id -u):$(shell id -g) \
 		-v $(shell pwd)/$(BINARIES):/go/bin $(CACHE_VOLS) \
 		-v $(shell pwd):/go/src/$(REPO) -w /go/src/$(REPO) \
-		-e CGO_ENABLED=0 -e GOOS=$(GOOS) -e GOARCH=amd64 \
+		-e CGO_ENABLED=0 -e GOOS=$(GOOS) -e GOARCH=$(GOARCH) \
 		$(GO_IMAGE) bash -c \
 			"go mod tidy && go build -v -tags netgo -installsuffix netgo \
 			-ldflags \"-w -X main.DregsyVersion=$(DREGSY_VERSION)\" \

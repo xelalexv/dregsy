@@ -170,6 +170,34 @@ function run_tests {
 #
 #
 #
+function get_architecture {
+
+    local arch
+    arch="$(uname -m)"
+
+    case ${arch} in
+        x86_64)
+            echo -n "amd64"
+            ;;
+        x86|i386|i686)
+            echo -n "386"
+            ;;
+        armv5*|armv6*|armv7*)
+            echo -n "arm"
+            ;;
+        aarch64)
+            echo -n "arm64"
+            ;;
+        *)
+            echo -e "\nUnsupported architecture: ${arch}\n" >&2
+            return 1
+            ;;
+    esac
+}
+
+#
+#
+#
 
 cd "$(dirname "$0")" || exit 1
 "$@"
