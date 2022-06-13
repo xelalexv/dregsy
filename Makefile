@@ -81,16 +81,18 @@ GOARCH = $(shell ./hack/devenvutil get_architecture)
 #	${ITL}TEST_ALPINE=n${NRM}	when using this with the test target, tests will not be performed
 #	${ITL}TEST_UBUNTU=n${NRM}	for the respective image (${ITL}Alpine${NRM} or ${ITL}Ubuntu${NRM} based)
 #
+#	${ITL}TEST_OPTS="..."${NRM} any options you would like to pass to the test run, e.g. to select a
+#			particular test, ${DIM}TEST_OPTS="-run TestE2ESkopeo"${NRM}
+#
 
 VERBOSE ?=
 ifeq ($(VERBOSE),y)
     $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
     $(warning ***** $(shell date))
     MAKEFLAGS += --trace
-    TEST_OPTS = -v
+    TEST_OPTS += -v
 else
     MAKEFLAGS += -s
-    TEST_OPTS =
 endif
 
 ifeq ($(MAKECMDGOALS),release)

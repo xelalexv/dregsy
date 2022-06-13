@@ -1,0 +1,22 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+
+tasks:
+- name: test-docker-prune
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+    auth: {{ .DockerhubAuth }}
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    to: tagsets-docker/prune/busybox
+    tags:
+    - 'semver: >=1.31.0 <1.31.9'
+    - 'keep: .+(glibc|musl)'
