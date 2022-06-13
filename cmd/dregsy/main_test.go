@@ -157,6 +157,17 @@ func TestE2EDockerTagSetsRange(t *testing.T) {
 }
 
 //
+func TestE2EDockerTagSetsPrune(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/tagsets/docker-prune.yaml",
+		0, 0, true, map[string][]string{
+			"tagsets-docker/prune/busybox": {
+				"1.31.1-musl", "1.31.1-glibc",
+			},
+		},
+		test.GetParams())
+}
+
+//
 func TestE2EDockerTagSetsRegex(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/tagsets/docker-regex.yaml",
 		0, 0, true, map[string][]string{
@@ -275,6 +286,17 @@ func TestE2ESkopeoTagSetsRange(t *testing.T) {
 			"tagsets-skopeo/range/busybox": {
 				"latest", "1.31", "1.31.0", "1.31.1-musl", "1.31.1",
 				"1.31.1-uclibc", "1.31.1-glibc",
+			},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2ESkopeoTagSetsPrune(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/tagsets/skopeo-prune.yaml",
+		0, 0, true, map[string][]string{
+			"tagsets-skopeo/prune/busybox": {
+				"1.31.1-musl", "1.31.1-glibc",
 			},
 		},
 		test.GetParams())

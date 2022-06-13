@@ -90,12 +90,12 @@ tasks:
 When syncing via a *Docker* relay, do not use the same *Docker* daemon for building local images (even better: don't use it for anything else but syncing). There is a risk that the reference to a locally built image clashes with the shorthand notation for a reference to an image on `docker.io`. E.g. if you built a local image `busybox`, then this would be indistinguishable from the shorthand `busybox` pointing to `docker.io/library/busybox`. One way to avoid this is to use `registry.hub.docker.com` instead of `docker.io` in references, which would never get shortened. If you're not syncing from/to `docker.io`, then all of this is not a concern.
 
 
-### Image Matching
+### Image Matching <sup>*&#946; feature*</sup>
 
-The `mappings` section of a task can employ *Go* regular expressions for describing what images to sync, and how to change the destination path and name of an image. Details about how this works and examples can be found in this [design document](doc/design-image-matching.md). Note however that this is still a *beta* feature, so things may not quite work as expected. Also keep in mind that regular expressions can be surprising at times, so it would be a good idea to try them out first in a *Go* playground. You may otherwise potentially sync large numbers of images, clogging your target registry, or running into rate limits. Feedback about this feature is encouraged! 
+The `mappings` section of a task can employ *Go* regular expressions for describing what images to sync, and how to change the destination path and name of an image. Details about how this works and examples can be found in this [design document](doc/design-image-matching.md). Also keep in mind that regular expressions can be surprising at times, so it would be a good idea to try them out first in a *Go* playground. You may otherwise potentially sync large numbers of images, clogging your target registry, or running into rate limits. Feedback about this feature is encouraged! 
 
 
-### Tag Filtering
+### Tag Filtering <sup>*&#946; feature*</sup>
 
 The `tags` list of a task can use *semver* and regular expression filters, so you can do something like this:
 
@@ -107,20 +107,30 @@ tags:
   - 'latest'
 ```
 
-This would sync all tags describing versions equal to or larger than `1.31.0`, but lower than `1.31.9`, via the `semver:` filter. The `regex:` filter additionally syncs any `1.26.`x image with suffix `-glibc`, `-uclibc`, or `-musl`. Finally, the verbatim tags `1.29.4` and `latest` are also synced.
+This would sync all tags describing versions equal to or larger than `1.31.0`, but lower than `1.31.9`, via the `semver:` filter. The `regex:` filter additionally syncs any `1.26.`*x* image with suffix `-glibc`, `-uclibc`, or `-musl`. Finally, the verbatim tags `1.29.4` and `latest` are also synced.
 
-Note that tag filtering is still a *beta* feature. Also, the tags of an image need to conform to the *semver* specification *2.0.0* in order to be considered during filtering. The implementation uses the [blang/semver](https://github.com/blang/semver) lib. Have a look at their page or [the GoDoc](https://pkg.go.dev/github.com/blang/semver/v4) for more info on how to write *semver* filter expressions. Semver filtering tolerates and handles tags starting with a `v` prefix. Semver filter expressions however must not use a `v` prefix. Regex filters use standard *Go* regular expressions. When the first non-whitespace character after `regex:` is `!`, the filter will use inverted match. Keep in mind that when a regex contains a backslash, you need to place it inside single quotes to keep the YAML valid.
+Note that the tags of an image need to conform to the *semver* specification *2.0.0* in order to be considered during filtering. The implementation uses the [blang/semver](https://github.com/blang/semver) lib. Have a look at their page or [the GoDoc](https://pkg.go.dev/github.com/blang/semver/v4) for more info on how to write *semver* filter expressions. Semver filtering handles tags starting with a `v` prefix. It also tolerates suffixes, for example platform IDs which are often used in tags, as long as the tag starts with a full *major.minor.patch* semver. Semver **filter expressions** however must not use a `v` prefix or any suffix.
+
+Regex filters use standard *Go* regular expressions. When the first non-whitespace character after `regex:` is `!`, the filter will use inverted match. Keep in mind that when a regex contains a backslash, you need to place it inside single quotes to keep the YAML valid.
 
 You can add multiple `semver:` and `regex:` filters under `tags`. Note however that the filters are simply ORed, i.e. a tag is synced if it satisfies at least one of the items under `tags`, be it semver, regex, or verbatim. So this is not a filter chain. Also, no sanity checks are done on the filters, so care must be taken to avoid competing or contradicting filters that select all or nothing at all.
 
+#### Tag Set Pruning <sup>*&#945; feature*</sup>
+Additionally it is possible to *prune* the resulting tag set with one or more `keep:` filters. These are regular expressions, identical to `regex:` filters (including inversion), but they get applied last, independent of where in the list they appear. If a tag in the filtered tag set does not match **all** of the `keep:` filters, it is removed from the set. This helps in defining tag filters that would be hard to describe with only *semver* and regular expressions. Here's an example for a source registry that attaches OS suffixes to their version tags, such as `2.1.4-buster`:
 
-### Platform Selection (*Multi-Platform* Source Images)
+```yaml
+tags:
+  - 'semver: >=2.0.0'
+  - 'keep: .+-(alpine|buster)'
+```
+
+This will select all releases starting with version `2.0.0`, but only for the `-alpine` and `-buster` suffixes.
+
+### Platform Selection (*Multi-Platform* Source Images) <sup>*&#945; feature*</sup>
 
 When the source image is a *multi-platform* image, the platform image adequate for the system on which *dregsy* runs is synced by default. Where this is not applicable, the desired platform can be specified via the `platform` setting, separately for each mapping. To sync all available platform images, `platform: all` can be used. Note however that this shorthand is only supported by the *Skopeo* relay.
 
 To sync a selection of platform images from the same multi-platform source image, several mappings with according `platform` settings can be defined. However, be careful not to map them into the same destination, i.e. use different `to` settings. Otherwise, the synced platform images will "overwrite" each other, with only the last image synced being available from the target repository.
-
-Note that platform selection is still an *alpha* feature.
 
 
 ### Repository Validation & Client Authentication with TLS
@@ -334,4 +344,11 @@ DREGSY_TEST_GCR_IMAGE = dregsy/test
 DREGSY_TEST_GAR_HOST = europe-west3-docker.pkg.dev
 DREGSY_TEST_GAR_PROJECT = {your project}
 DREGSY_TEST_GAR_IMAGE = dregsy/test
+```
+
+#### Selecting Test Cases
+You can select a particular test case with the `-run` argument, which you can pass to `go test` via the `TEST_OPTS` environment variable. Note that the `-run` argument is a regular expression. This for example would run only the *Skopeo* end-to-end tests, with verbose output and skipping the *Ubuntu* based *dregsy* image:
+
+```bash
+VERBOSE=y TEST_UBUNTU=n TEST_OPTS="-run TestE2ESkopeo.*" make tests
 ```
