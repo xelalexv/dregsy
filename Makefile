@@ -27,7 +27,9 @@ BINARIES = $(BUILD_OUTPUT)/bin
 ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
 ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 
-GO_IMAGE = golang:1.18.2@sha256:a9d1f28367890615df70c45ba54ea69a8e95e202517e7114942c2f0449ce1de9
+GO_IMAGE_DIGEST_amd64 = "a9d1f28367890615df70c45ba54ea69a8e95e202517e7114942c2f0449ce1de9"
+GO_IMAGE_DIGEST_arm64 = "04fab5aaf4fc18c40379924674491d988af3d9e97487472e674d0b5fd837dfac"
+GO_IMAGE = golang:1.18.2
 GOOS = $(shell uname -s | tr A-Z a-z)
 GOARCH = $(shell ./hack/devenvutil get_architecture)
 
@@ -162,7 +164,7 @@ dregsy: prep
 		-v $(shell pwd)/$(BINARIES):/go/bin $(CACHE_VOLS) \
 		-v $(shell pwd):/go/src/$(REPO) -w /go/src/$(REPO) \
 		-e CGO_ENABLED=0 -e GOOS=$(GOOS) -e GOARCH=$(GOARCH) \
-		$(GO_IMAGE) bash -c \
+		$(GO_IMAGE)@sha256:$(GO_IMAGE_DIGEST_$(GOARCH)) bash -c \
 			"go mod tidy && go build -v -tags netgo -installsuffix netgo \
 			-ldflags \"-w -X main.DregsyVersion=$(DREGSY_VERSION)\" \
 			-o $(BINARIES)/dregsy ./cmd/dregsy/"
