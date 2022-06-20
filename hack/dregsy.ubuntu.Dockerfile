@@ -16,7 +16,7 @@
 
 # Skopeo build
 #
-FROM golang:1.17.11@sha256:dceb25b534d8da2aa50da5c6489fc4120db24f24dcf8b3b1862d1a8cebf1210b as skopeo
+FROM golang:1.18.3@sha256:5417b4917fa7ed3ad2678a3ce6378a00c95bfd430c2ffa39936fce55130b5f2c as skopeo
 
 ARG SKOPEO_VERSION
 

@@ -16,7 +16,7 @@
 
 # Skopeo build, taken from https://github.com/bdwyertech/docker-skopeo
 #
-FROM golang:1.17.11-alpine3.15@sha256:a063835853ab2d124360440a65b43c046d5f39685e7e3d054cc6b71fe9f5d598 as skopeo
+FROM golang:1.18.3-alpine3.15@sha256:a1c4b28a06d5fce9b1e52b09930e240d24b00dfa85879df023f2ea7201bbe026 as skopeo
 
 ARG SKOPEO_VERSION
 

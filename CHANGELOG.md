@@ -1,15 +1,19 @@
 # Changelog
 
-## `master`
+## `0.4.3`
+- support for pruning filtered tag sets (issue #72, *alpha* feature)
+- added `-run` option for filtering tasks to run (issue #59)
 - support for platform selection when syncing from multi-platform images (issue #43, *alpha* feature)
 - raised default *Docker* API version to `1.41`
+- adjusted build to also work on MacOS+M1
 - remediation of CVEs in dependencies:
     + [Improper Input Validation in GoGo Protobuf](https://github.com/advisories/GHSA-c3h9-896r-86jm)
     + [containerd CRI plugin: Insecure handling of image volumes](https://github.com/advisories/GHSA-crp2-qrr5-8pq7)
+    + [containerd CRI plugin: Host memory exhaustion through ExecSync](https://github.com/advisories/GHSA-5ffw-gxpp-mxpf)
 - upgrades:
-    + switched to *Go* 1.18
-    + switched to *Ubuntu 22.04* and *Alpine 3.15*
-    + *Skopeo* to 1.8.0 (own build)
+    + *Go* 1.18
+    + *Ubuntu 22.04* and *Alpine 3.15*
+    + *Skopeo* 1.8.0 (own build)
 
 ## `0.4.2`
 - remediation of CVEs in dependencies:
