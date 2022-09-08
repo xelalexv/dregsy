@@ -55,7 +55,7 @@ func (rf *gcrAuthRefresher) Refresh(creds *Credentials) error {
 	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
 		authToken, expiry, err = gcpTokenFromCreds()
 
-	} else if isGCEInstance() {
+	} else if hasGoogleMetadataServer() {
 		authToken, expiry, err = gcpTokenFromMetadata()
 
 	} else {
@@ -79,11 +79,20 @@ func (rf *gcrAuthRefresher) Refresh(creds *Credentials) error {
 }
 
 //
-func isGCEInstance() bool {
-	resp, err := http.Head(gcp_metadata_url)
+func hasGoogleMetadataServer() bool {
+	req, err := http.NewRequest("HEAD", gcp_metadata_url, nil)
 	if err != nil {
 		return false
 	}
+
+	req.Header.Set("Metadata-Flavor", "Google")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+
 	return resp.Header.Get("Metadata-Flavor") == "Google"
 }
 
