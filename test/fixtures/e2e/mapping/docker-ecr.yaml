@@ -21,5 +21,5 @@ tasks:
     # not actually supported for Docker relay, but need this for validation
     skip-tls-verify: true
   mappings:
-  - from: regex:kubika/.*
+  - from: regex:kubika/brucket.*
     to: mapping-docker/ecr

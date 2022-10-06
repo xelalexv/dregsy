@@ -17,5 +17,5 @@ tasks:
     auth: {{ .LocalAuth }}
     skip-tls-verify: true
   mappings:
-  - from: regex:kubika/.*
+  - from: regex:kubika/brucket.*
     to: mapping-skopeo/ecr
