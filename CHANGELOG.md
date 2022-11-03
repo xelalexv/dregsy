@@ -1,5 +1,13 @@
 # Changelog
 
+## `0.4.4`
+- use `Metadata-Flavor` header when checking for *Google* metadata server (pr #82)
+- upgrades:
+    + *Go* 1.18.8
+    + latest *Ubuntu 22.04* (remediates [CVE-2022-3602](https://ubuntu.com/security/CVE-2022-3602) and [CVE-2022-3786](https://ubuntu.com/security/CVE-2022-3786))
+    + *Alpine 3.16*
+    + *Skopeo* 1.9.3
+
 ## `0.4.3`
 - support for pruning filtered tag sets (issue #72, *alpha* feature)
 - added `-run` option for filtering tasks to run (issue #59)
