@@ -16,7 +16,7 @@
 
 # Skopeo build
 #
-FROM golang:1.18.3@sha256:5417b4917fa7ed3ad2678a3ce6378a00c95bfd430c2ffa39936fce55130b5f2c as skopeo
+FROM golang:1.18.8@sha256:0fb1e79db0084e49cd4169612c6f7b7d414a1dba59072997cd3ac3ae1d725361 as skopeo
 
 ARG SKOPEO_VERSION
 
@@ -32,7 +32,7 @@ RUN apt-get update \
 
 # dregsy image
 #
-FROM docker.io/ubuntu:22.04@sha256:aa6c2c047467afc828e77e306041b7fa4a65734fe3449a54aa9c280822b0d87d
+FROM docker.io/ubuntu:22.04@sha256:817cfe4672284dcbfee885b1a66094fd907630d610cab329114d036716be49ba
 
 LABEL maintainer "vollschwitz@gmx.net"
 
