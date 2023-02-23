@@ -1,5 +1,12 @@
 # Changelog
 
+## `0.4.5`
+- upgrades:
+    + *Go* 1.20.1
+    + latest *Ubuntu 22.04* and *Alpine 3.17*
+    + *Skopeo* 1.11.1
+    + misc. lib upgrades for CVE remediation
+
 ## `0.4.4`
 - use `Metadata-Flavor` header when checking for *Google* metadata server (pr #82)
 - upgrades:
