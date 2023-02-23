@@ -149,6 +149,7 @@ function run_tests {
 
     echo -e "\ntesting using $1-based image:"
 
+    # shellcheck disable=SC2086
     docker run --privileged --network host --rm  \
         -v "${ROOT}:/go/src/${REPO}" -w "/go/src/${REPO}" \
         -v "${ROOT}/${BINARIES}:/go/bin" \

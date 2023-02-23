@@ -16,7 +16,7 @@
 
 # Skopeo build
 #
-FROM golang:1.18.8@sha256:0fb1e79db0084e49cd4169612c6f7b7d414a1dba59072997cd3ac3ae1d725361 as skopeo
+FROM docker.io/golang:1.20.1@sha256:745aa72cefb6f9527c1588590982c0bdf85a1be5d611dda849e54b5dbf551506 as skopeo
 
 ARG SKOPEO_VERSION
 
@@ -32,7 +32,7 @@ RUN apt-get update \
 
 # dregsy image
 #
-FROM docker.io/ubuntu:22.04@sha256:817cfe4672284dcbfee885b1a66094fd907630d610cab329114d036716be49ba
+FROM docker.io/ubuntu:22.04@sha256:c985bc3f77946b8e92c9a3648c6f31751a7dd972e06604785e47303f4ad47c4c
 
 LABEL maintainer "vollschwitz@gmx.net"
 
@@ -41,10 +41,6 @@ ARG binaries
 ENV DEBIAN_FRONTEND=noninteractive
 ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes
 
-#
-# check for available Skopeo here:
-#   https://packages.ubuntu.com/search?keywords=skopeo&searchon=names&suite=jammy&section=all
-#
 RUN apt-get update && \
     apt-get upgrade -y --fix-missing && \
     apt-get install -y --no-install-recommends --fix-missing \
