@@ -118,7 +118,7 @@ tags:
   - 'latest'
 ```
 
-This would sync all tags describing versions equal to or larger than `1.31.0`, but lower than `1.31.9`, via the `semver:` filter. The `regex:` filter additionally syncs any `1.26.`*x* image with suffix `-glibc`, `-uclibc`, or `-musl`. Finally, the verbatim tags `1.29.4` and `latest` are also synced.
+This syncs all tags describing versions equal to or larger than `1.31.0`, but lower than `1.31.9`, via the `semver:` filter. The `regex:` filter additionally syncs any `1.26.`*x* image with suffix `-glibc`, `-uclibc`, or `-musl`. Finally, the verbatim tags `1.29.4` and `latest` are also synced.
 
 Note that the tags of an image need to conform to the *semver* specification *2.0.0* in order to be considered during filtering. The implementation uses the [blang/semver](https://github.com/blang/semver) lib. Have a look at their page or [the GoDoc](https://pkg.go.dev/github.com/blang/semver/v4) for more info on how to write *semver* filter expressions. Semver filtering handles tags starting with a `v` prefix. It also tolerates suffixes, for example platform IDs which are often used in tags, as long as the tag starts with a full *major.minor.patch* semver. Semver **filter expressions** however must not use a `v` prefix or any suffix.
 
@@ -127,15 +127,18 @@ Regex filters use standard *Go* regular expressions. When the first non-whitespa
 You can add multiple `semver:` and `regex:` filters under `tags`. Note however that the filters are simply ORed, i.e. a tag is synced if it satisfies at least one of the items under `tags`, be it semver, regex, or verbatim. So this is not a filter chain. Also, no sanity checks are done on the filters, so care must be taken to avoid competing or contradicting filters that select all or nothing at all.
 
 #### Tag Set Pruning <sup>*&#946; feature*</sup>
-Additionally it is possible to *prune* the resulting tag set with one or more `keep:` filters. These are regular expressions, identical to `regex:` filters (including inversion), but they get applied last, independent of where in the list they appear. If a tag in the filtered tag set does not match **all** of the `keep:` filters, it is removed from the set. This helps in defining tag filters that would be hard to describe with only *semver* and regular expressions. Here's an example for a source registry that attaches OS suffixes to their version tags, such as `2.1.4-buster`:
+Additionally it is possible to *prune* the resulting tag set with one or more `keep:` filters. These are regular expressions, identical to `regex:` filters (including inversion), but they get applied last, independent of where in the list they appear. If a tag in the filtered tag set does not match **all** of the `keep:` filters, it is removed from the set. This helps in defining tag filters that would be hard to describe with only *semver* and regular expressions. Note however that `keep:` filters do not apply to verbatim tags!
+
+Here's an example for a source registry that attaches OS suffixes to their version tags, such as `2.1.4-buster`:
 
 ```yaml
 tags:
+  - 'latest'
   - 'semver: >=2.0.0'
   - 'keep: .+-(alpine|buster)'
 ```
 
-This selects all releases starting with version `2.0.0`, but only for the `-alpine` and `-buster` suffixes.
+This selects all releases starting with version `2.0.0`, but only for the `-alpine` and `-buster` suffixes. The `latest` tag however is still included in the sync.
 
 **Limiting the Tag Count** <sup>*&#945; feature*</sup>
 
@@ -159,6 +162,30 @@ Keep the following in mind when using tag count limits:
 - For repositories with no *semver* tags, tag count limiting may not be suitable depending on what kind of tags are present. When sorted in string order, the tags need to represent their temporal order. Where for example arbitrary code names are used, this will not work.
 
 - If several `keep: latest` directives are specified in a `tags` list, the last one is used. 
+
+
+### Tags With Digests <sup>*&#945; feature*</sup>
+
+Verbatim tags in a `tags` list may also contain image digests to uniquely identify the requested image. The format for verbatim tags with digests is `[tag@]sha256:{digest value}`, i.e. the tag name can be dropped. As all verbatim tags, they can be mixed with tag filter expressions (see above). If a digest is present, the behavior is as follows:
+
+- When pulling from the source, the tag is dropped if present, and only the digest used. This is done to achieve consistent behavior between the *Skopeo* and *Docker* relays.
+
+    Background: *Skopeo* currently does not support both tag and digest in the same image reference and exits with an error. For *Docker*, the behavior depends on the version: up through version 1.13.1 and starting again with v20.10.20, *Docker* checks whether tag and digest match and throws an error if they don't. For versions in between, the tag is ignored.
+
+- When pushing to the target, the name if present is used and the digest dropped. Otherwise the digest is used.
+
+    If there is only a digest, the *Docker* relay auto-generates a tag of the format `dregsy-{digest value}`, since *Docker* does not support pushing by digest-only references. If tags of this format are not desired, specify tags for all digests in your sync config, which would then be used instead.
+
+Here's an example:
+
+```yaml
+tags:
+  - 'sha256:1d8a...'
+  - '1.36.0-uclibc@sha256:58f1...'
+```
+
+This syncs two distinct versions of an image, according to the given *SHA256* sums. For the second digest in the list, tag `1.36.0-uclibc` is created in the target repository.
+
 
 ### Platform Selection (*Multi-Platform* Source Images) <sup>*&#946; feature*</sup>
 
@@ -236,7 +263,7 @@ If these mechanisms are not applicable in your use case, you can also authentica
 ```JSON
 {
     "username": "oauth2accesstoken",
-    "password": <oauth2 token as described in the Artifact Registry documentation>
+    "password": "<oauth2 token as described in the Artifact Registry documentation>"
 }
 ```
 

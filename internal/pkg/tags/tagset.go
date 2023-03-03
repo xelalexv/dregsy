@@ -200,12 +200,7 @@ func (ts *TagSet) Expand(lister func() ([]string, error)) ([]string, error) {
 		}
 	}
 
-	if ts.HasVerbatim() {
-		log.Debugf("verbatim tags: %v", ts.verbatim)
-		addToSet(set, ts.verbatim)
-	}
-
-	ret := make([]string, 0, len(set))
+	ret := make([]string, 0, len(set)+len(ts.verbatim))
 	var pruned []string
 
 	for t := range set {
@@ -219,6 +214,12 @@ func (ts *TagSet) Expand(lister func() ([]string, error)) ([]string, error) {
 	}
 
 	log.Debugf("pruned tags: %v", pruned)
+
+	// verbatim tags must not be pruned, but are subject to count limiting
+	if ts.HasVerbatim() {
+		log.Debugf("adding verbatim tags: %v", ts.verbatim)
+		ret = append(ret, ts.verbatim...)
+	}
 
 	if ts.keepCount > 0 {
 		log.WithField("limit", ts.keepCount).Debug("reducing tag set")

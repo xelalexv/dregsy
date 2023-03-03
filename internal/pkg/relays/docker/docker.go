@@ -28,6 +28,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/xelalexv/dregsy/internal/pkg/util"
@@ -35,20 +36,20 @@ import (
 
 //
 type image struct {
-	ID   string
-	Repo string
-	Path string
-	Tags []string
+	id   string
+	reg  string
+	repo string
+	tags []string
 }
 
 //
 func (s *image) ref() string {
-	return fmt.Sprintf("%s/%s", s.Repo, s.Path)
+	return fmt.Sprintf("%s/%s", s.reg, s.repo)
 }
 
 //
 func (s *image) refWithTags() string {
-	return fmt.Sprintf("%s/%s:%v", s.Repo, s.Path, s.Tags)
+	return fmt.Sprintf("%s/%s:%v", s.reg, s.repo, s.tags)
 }
 
 //
@@ -85,8 +86,7 @@ func newEnvClient() (*dockerClient, error) {
 }
 
 //
-func (dc *dockerClient) open() error {
-	var err error
+func (dc *dockerClient) open() (err error) {
 	if dc.client == nil {
 		if dc.env {
 			dc.client, err = client.NewEnvClient()
@@ -94,92 +94,116 @@ func (dc *dockerClient) open() error {
 			dc.client, err = client.NewClient(dc.host, dc.version, nil, nil)
 		}
 	}
-	return err
+	return
 }
 
 //
 func (dc *dockerClient) ping(attempts int, sleep time.Duration) (
-	types.Ping, error) {
-	var err error
+	res types.Ping, err error) {
+
 	for i := 1; ; i++ {
-		if res, err := dc.client.Ping(context.Background()); err == nil {
-			return res, err
+		if res, err = dc.client.Ping(context.Background()); err == nil {
+			return
 		}
 		if i >= attempts {
 			break
 		}
 		time.Sleep(sleep)
 	}
-	return types.Ping{},
-		fmt.Errorf(
-			"unsuccessfully pinged Docker server %d times, last error: %s",
-			attempts, err)
+
+	return types.Ping{}, fmt.Errorf(
+		"unsuccessfully pinged Docker server %d times, last error: %s",
+		attempts, err)
 }
 
 //
 func (dc *dockerClient) close() error {
-	var err error
 	if dc.client != nil {
-		err = dc.client.Close()
+		return dc.client.Close()
 	}
-	return err
+	return nil
 }
 
 //
-func (dc *dockerClient) listImages(ref string) ([]*image, error) {
+func (dc *dockerClient) listImages(ref string) (list []*image, err error) {
 
+	log.WithField("ref", ref).Debug("listing images")
 	imgs, err := dc.client.ImageList(
 		context.Background(), types.ImageListOptions{})
-	ret := []*image{}
+	if err != nil {
+		return
+	}
 
-	if err == nil {
-		fRepo, fPath, fTag := util.SplitRef(ref)
-		for _, img := range imgs {
-			var i *image
-			for _, rt := range img.RepoTags {
-				matched, err := match(fRepo, fPath, fTag, rt)
-				if err != nil {
-					return ret, err
+	fReg, fRepo, tag := util.SplitRef(ref) // the filter components
+	name, dig := util.SplitTag(tag)
+	fTag := name
+	if dig != "" {
+		fTag = dig
+	}
+
+	for _, img := range imgs {
+
+		col := img.RepoTags // switch between the two lists depending on
+		if dig != "" {      // whether we have a digest as tag filter
+			col = img.RepoDigests
+		}
+
+		var i *image
+
+		for _, rt := range col {
+
+			if matched, err := match(fReg, fRepo, fTag, rt); err != nil {
+				return list, err
+
+			} else if matched {
+				rg, rp, tg := util.SplitRef(rt)
+				if i == nil {
+					i = &image{
+						id:   img.ID,
+						reg:  rg,
+						repo: rp,
+					}
+					list = append(list, i)
 				}
-				if matched {
-					repo, path, tag := util.SplitRef(rt)
-					if i == nil {
-						i = &image{
-							ID:   img.ID,
-							Repo: repo,
-							Path: path,
-						}
-						ret = append(ret, i)
+				if tg != "" { // match has tag
+					if dig != "" {
+						// if we're using a digest as filter tag, we need to use
+						// the full tag from ref, since it may also contain a
+						// name, which would however be missing in tg; otherwise
+						// we take the tag as is from the match
+						tg = tag
 					}
-					if tag != "" {
-						i.Tags = append(i.Tags, tag)
-					}
+					i.tags = append(i.tags, tg)
 				}
 			}
 		}
 	}
 
-	return ret, err
+	return
 }
 
 //
-func match(filterRepo, filterPath, filterTag, ref string) (bool, error) {
+func match(filterReg, filterRepo, filterTag, ref string) (bool, error) {
 
-	filter := fmt.Sprintf("%s/%s", filterRepo, filterPath)
+	if ref == "<none>:<none>" || ref == "<none>@<none>" {
+		return false, nil
+	}
+
+	filter := fmt.Sprintf("%s/%s", filterReg, filterRepo)
 	filterCanon, err := reference.ParseAnyReference(filter)
 	if err != nil {
 		return false, fmt.Errorf("malformed ref in filter '%s', %v", filter, err)
 	}
-	filterRepo, filterPath, _ = util.SplitRef(filterCanon.String())
+	filterReg, filterRepo, _ = util.SplitRef(filterCanon.String())
 
 	refCanon, err := reference.ParseAnyReference(ref)
 	if err != nil {
 		return false, fmt.Errorf("malformed image ref '%s': %v", ref, err)
 	}
 
-	repo, path, tag := util.SplitRef(refCanon.String())
-	return (filterRepo == "" || filterRepo == repo) &&
-		(filterPath == "" || filterPath == path) &&
+	reg, repo, tag := util.SplitRef(refCanon.String())
+	return (filterReg == "" || filterReg == reg) &&
+		(filterRepo == "" || filterRepo == repo) &&
 		(filterTag == "" || filterTag == tag), nil
 }
 
@@ -216,8 +240,7 @@ func (dc *dockerClient) tagImage(source, target string) error {
 }
 
 //
-func (dc *dockerClient) handleLog(rc io.ReadCloser, err error,
-	verbose bool) error {
+func (dc *dockerClient) handleLog(rc io.ReadCloser, err error, verbose bool) error {
 
 	if err != nil {
 		return err

@@ -116,17 +116,18 @@ func (r *DockerRelay) Sync(opt *relays.SyncOptions) error {
 	var err error
 
 	// When no tags are specified, a simple docker pull without a tag will get
-	// all tags. So for Docker relay, we don't need to list tags in this case.
+	// all tags. So for that case, we don't need to list tags.
+
 	if !opt.Tags.IsEmpty() {
-		srcCertDir := ""
+		var certs string
 		repo, _, _ := util.SplitRef(opt.SrcRef)
 		if repo != "" {
-			srcCertDir = skopeo.CertsDirForRepo(repo)
+			certs = skopeo.CertsDirForRepo(repo)
 		}
 		tags, err = opt.Tags.Expand(func() ([]string, error) {
 			return skopeo.ListAllTags(
 				opt.SrcRef, util.DecodeJSONAuth(opt.SrcAuth),
-				srcCertDir, opt.SrcSkipTLSVerify)
+				certs, opt.SrcSkipTLSVerify)
 		})
 
 		if err != nil {
@@ -134,43 +135,51 @@ func (r *DockerRelay) Sync(opt *relays.SyncOptions) error {
 		}
 	}
 
-	if len(tags) == 0 {
+	if len(tags) == 0 { // pull all tags
 		if err = r.pull(opt.SrcRef, opt.Platform, opt.SrcAuth,
 			true, opt.Verbose); err != nil {
 			return fmt.Errorf(
 				"error pulling source image '%s': %v", opt.SrcRef, err)
 		}
 
-	} else {
+	} else { // pull tag by tag; tags with digest are pulled by digest only
 		for _, tag := range tags {
-			srcRefTagged := fmt.Sprintf("%s:%s", opt.SrcRef, tag)
-			if err = r.pull(srcRefTagged, opt.Platform, opt.SrcAuth,
+			tagged, _ := util.JoinRefsAndTag(opt.SrcRef, "", tag)
+			if err = r.pull(tagged, opt.Platform, opt.SrcAuth,
 				false, opt.Verbose); err != nil {
 				return fmt.Errorf(
-					"error pulling source image '%s': %v", srcRefTagged, err)
+					"error pulling source image '%s': %v", tagged, err)
 			}
 		}
 	}
 
+	// Now that we've pulled all required tags, we need to get the image IDs
+	// for pushing to the target registry. For this, we list all images that are
+	// currently present, and then filter by registry, repo & tags. We do this
+	// rather than using filter expressions in Docker list options, to maintain
+	// better control over the reference matching. Docker may refer to images
+	// originating from DockerHub in the short form, which would not match fully
+	// qualified references that could be used in the sync config. In our own
+	// filtering, we canonicalize all references before matching.
+
 	log.Info("relevant tags:")
 	var srcImages []*image
 
-	if len(tags) == 0 {
+	if len(tags) == 0 { // use all local images that match source reference
 		srcImages, err = r.list(opt.SrcRef)
 		if err != nil {
 			log.Errorf("error listing all tags of source image '%s': %v",
 				opt.SrcRef, err)
 		}
 
-	} else {
+	} else { // filter local images by source reference and tags
 		for _, tag := range tags {
-			srcRefTagged := fmt.Sprintf("%s:%s", opt.SrcRef, tag)
-			srcImageTagged, err := r.list(srcRefTagged)
+			tagged := util.JoinRefAndTag(opt.SrcRef, tag)
+			imgs, err := r.list(tagged)
 			if err != nil {
-				log.Errorf(
-					"error listing source image '%s': %v", srcRefTagged, err)
+				log.Errorf("error listing source image '%s': %v", tagged, err)
 			}
-			srcImages = append(srcImages, srcImageTagged...)
+			srcImages = append(srcImages, imgs...)
 		}
 	}
 
@@ -180,8 +189,8 @@ func (r *DockerRelay) Sync(opt *relays.SyncOptions) error {
 
 	log.WithField("ref", opt.TrgtRef).Info("setting tags for target image")
 
-	_, err = r.tag(srcImages, opt.TrgtRef)
-	if err != nil {
+	// We now tag the source images for the target registry.
+	if err = r.tag(srcImages, opt.TrgtRef); err != nil {
 		return fmt.Errorf("error setting tags: %v", err)
 	}
 
@@ -189,6 +198,12 @@ func (r *DockerRelay) Sync(opt *relays.SyncOptions) error {
 		"ref":      opt.TrgtRef,
 		"platform": opt.Platform}).Info("pushing target image")
 
+	// Finally, the images are pushed to the target. This includes all present
+	// tags.
+	//
+	// FIXME: target tags should be removed to not interfere with tag count
+	//        limiting
+	//
 	if err := r.push(
 		opt.TrgtRef, opt.Platform, opt.TrgtAuth, opt.Verbose); err != nil {
 		return fmt.Errorf("error pushing target image: %v", err)
@@ -208,32 +223,48 @@ func (r *DockerRelay) list(ref string) ([]*image, error) {
 }
 
 //
-func (r *DockerRelay) tag(images []*image, targetRef string) (
-	[]*image, error) {
-
-	taggedImages := []*image{}
-	targetRepo, targetPath, _ := util.SplitRef(targetRef)
+func (r *DockerRelay) tag(images []*image, targetRef string) error {
 
 	for _, img := range images {
-		tagged := &image{
-			ID:   img.ID,
-			Repo: targetRepo,
-			Path: targetPath,
-			Tags: img.Tags,
-		}
-		for _, tag := range img.Tags {
-			if err := r.client.tagImage(img.ID, fmt.Sprintf("%s:%s",
-				tagged.ref(), tag)); err != nil {
-				return nil, err
+		for _, tag := range img.tags {
+			if tag != "" {
+				n, d := util.SplitTag(tag)
+				if n == "" {
+					// Docker does not support pushing by digest only ref; we
+					// therefore auto-generate a tag using the digest value
+					log.Debug("generating tag for digest only ref")
+					n = tagFromDigest(d)
+				}
+
+				log.WithFields(
+					log.Fields{"ref": targetRef, "tag": n}).Debug("tagging")
+
+				if err := r.client.tagImage(
+					img.id, fmt.Sprintf("%s:%s", targetRef, n)); err != nil {
+					return err
+				}
 			}
 		}
-		taggedImages = append(taggedImages, tagged)
 	}
 
-	return taggedImages, nil
+	return nil
 }
 
 //
 func (r *DockerRelay) push(ref, platform, auth string, verbose bool) error {
 	return r.client.pushImage(ref, true, platform, auth, verbose)
+}
+
+//
+func tagFromDigest(d string) string {
+
+	if util.IsDigest(d) {
+		d = d[len(util.DigestPrefix):]
+	}
+
+	ret := fmt.Sprintf("dregsy-%s", d)
+	if len(ret) > 128 {
+		ret = ret[:128]
+	}
+	return ret
 }

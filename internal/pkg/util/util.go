@@ -29,26 +29,102 @@ import (
 )
 
 //
-func SplitRef(ref string) (repo, path, tag string) {
+const DigestPrefix = "sha256:"
+
+const FormatDigest = "%s@%s"
+const FormatName = "%s:%s"
+
+//
+func SplitRef(ref string) (reg, repo, tag string) {
 
 	ix := strings.Index(ref, "/")
 
 	if ix == -1 {
-		repo = ""
-		path = ref
+		reg = ""
+		repo = ref
 	} else {
-		repo = ref[:ix]
-		path = ref[ix+1:]
+		reg = ref[:ix]
+		repo = ref[ix+1:]
 	}
 
-	ix = strings.Index(path, ":")
+	// note: if ref contains a colon for specifying registry port, it is left of
+	//       the first slash, and hence no longer included in repo at this point
+	ixC := strings.Index(repo, ":")
+	ixA := strings.Index(repo, "@")
 
-	if ix > -1 {
-		tag = path[ix+1:]
-		path = path[:ix]
+	if ixC > -1 && ixA > -1 { // we have both : and @
+		if ixC < ixA {
+			ix = ixC
+		} else {
+			ix = ixA
+		}
+	} else if ixA > -1 { // only @ (actually invalid)
+		ix = ixA
+	} else if ixC > -1 { // only :
+		ix = ixC
+	} else {
+		return // no tag
+	}
+
+	tag = repo[ix+1:]
+	repo = repo[:ix]
+
+	return
+}
+
+// HasName returns true if tag HAS or IS a name
+func HasName(tag string) bool {
+	n, _ := SplitTag(tag)
+	return n != ""
+}
+
+// HasDigest returns true if tag HAS or IS a digest
+func HasDigest(tag string) bool {
+	_, d := SplitTag(tag)
+	return d != ""
+}
+
+// IsDigest returns true if d is a digest string. For performance reasons, this
+// currently only checks for the presence of the `sha256:` prefix, and does not
+// run a regex against d for full compliance check. This way, incorrect digests
+// lead to errors, but correct digests do not incur a computational overhead.
+func IsDigest(d string) bool {
+	return strings.HasPrefix(d, DigestPrefix)
+}
+
+//
+func SplitTag(tag string) (name, digest string) {
+
+	if strings.HasPrefix(tag, ":") {
+		tag = tag[1:]
+	}
+	if tag == "" {
+		return
+	}
+
+	if p := strings.Split(tag, "@"); len(p) == 1 { // either tag or digest
+		if IsDigest(p[0]) {
+			digest = p[0]
+		} else {
+			name = p[0]
+		}
+	} else { // both
+		name = p[0]
+		digest = p[1]
 	}
 
 	return
+}
+
+//
+func JoinTag(name, digest string) string {
+	if digest == "" {
+		return name
+	}
+	if name == "" {
+		return digest
+	}
+	return fmt.Sprintf(FormatDigest, name, digest)
 }
 
 //
@@ -71,6 +147,41 @@ func SplitPlatform(p string) (os, arch, variant string) {
 		arch = arch[:ix]
 	}
 
+	return
+}
+
+// JoinRefAndTag joins ref with tag, inserting the correct separator ':' or '@',
+// depending on whether tag contains a name part or is purely a digest.
+func JoinRefAndTag(ref, tag string) string {
+	if HasName(tag) {
+		return fmt.Sprintf(FormatName, ref, tag)
+	}
+	return fmt.Sprintf(FormatDigest, ref, tag)
+}
+
+// JoinRefsAndTag joins the source and target ref for a sync action each with
+// tag, according to these rules:
+//
+// - If tag contains a digest, srcRef is joined with only the digest as tag, and
+//   trgtRef with either only the name part of tag (if present), or the digest.
+//
+// - Otherwise, srcRef and trgtRef are joined with tag.
+//
+// This ensures that if a digest is present, we always use that when pulling an
+// image, but still use the name if present when pushing.
+//
+func JoinRefsAndTag(srcRef, trgtRef, tag string) (src, trgt string) {
+	if name, digest := SplitTag(tag); digest != "" {
+		src = fmt.Sprintf(FormatDigest, srcRef, digest)
+		if name != "" {
+			trgt = fmt.Sprintf(FormatName, trgtRef, name)
+		} else {
+			trgt = fmt.Sprintf(FormatDigest, trgtRef, digest)
+		}
+	} else {
+		src = fmt.Sprintf(FormatName, srcRef, name)
+		trgt = fmt.Sprintf(FormatName, trgtRef, name)
+	}
 	return
 }
 

@@ -1,0 +1,23 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+
+tasks:
+- name: test-docker-digest
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+    auth: {{ .DockerhubAuth }}
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    to: tagsets-docker/digest/busybox
+    tags:
+    - 'sha256:1d8a02c7a89283870e8dd6bb93dc66bc258e294491a6bbeb193a044ed88773ea' # 1.36.0-musl
+    - '1.35.0-uclibc@sha256:ff4a7f382ff23a8f716741b6e60ef70a4986af3aff22d26e1f0e0cb4fde29289'
+    - 'keep: all.+' # make sure digests do not get removed by tag pruning

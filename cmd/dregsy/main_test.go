@@ -208,6 +208,30 @@ func TestE2EDockerTagSetsLimit(t *testing.T) {
 }
 
 //
+func TestE2EDockerTagSetsDigest(t *testing.T) {
+
+	// NOTE: Docker does not allow push by digest reference, we therefore
+	//       auto-generate a tag of the form `dregsy-{digest hex}`
+
+	th := test.NewTestHelper(t)
+	conf := tryConfig(th, "e2e/tagsets/docker-digest.yaml",
+		0, 0, true, map[string][]string{
+			"tagsets-docker/digest/busybox": {
+				"dregsy-1d8a02c7a89283870e8dd6bb93dc66bc258e294491a6bbeb193a044ed88773ea",
+				"1.35.0-uclibc",
+			},
+		},
+		test.GetParams())
+
+	validateDigests(th, conf, map[string][]string{
+		"/tagsets-docker/digest/busybox": {
+			"sha256:1d8a02c7a89283870e8dd6bb93dc66bc258e294491a6bbeb193a044ed88773ea",
+			"sha256:ff4a7f382ff23a8f716741b6e60ef70a4986af3aff22d26e1f0e0cb4fde29289",
+		},
+	})
+}
+
+//
 func TestE2ESkopeo(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo.yaml",
 		1, 0, true, nil, test.GetParams())
@@ -371,8 +395,28 @@ func TestE2ESkopeoTagSetsLimit(t *testing.T) {
 }
 
 //
+func TestE2ESkopeoTagSetsDigest(t *testing.T) {
+
+	th := test.NewTestHelper(t)
+	conf := tryConfig(th, "e2e/tagsets/skopeo-digest.yaml",
+		0, 0, true, map[string][]string{
+			"tagsets-skopeo/digest/busybox": {
+				"1.35.0-uclibc",
+			},
+		},
+		test.GetParams())
+
+	validateDigests(th, conf, map[string][]string{
+		"/tagsets-skopeo/digest/busybox": {
+			"sha256:1d8a02c7a89283870e8dd6bb93dc66bc258e294491a6bbeb193a044ed88773ea",
+			"sha256:ff4a7f382ff23a8f716741b6e60ef70a4986af3aff22d26e1f0e0cb4fde29289",
+		},
+	})
+}
+
+//
 func tryConfig(th *test.TestHelper, file string, ticks int, wait time.Duration,
-	verify bool, expectations map[string][]string, data interface{}) {
+	verify bool, expectations map[string][]string, data interface{}) *sync.SyncConfig {
 
 	test.StackTraceDepth = 2
 	defer func() { test.StackTraceDepth = 1 }()
@@ -389,7 +433,7 @@ func tryConfig(th *test.TestHelper, file string, ticks int, wait time.Duration,
 	th.AssertEqual(0, runDregsy(th, ticks, wait, "-config="+dst))
 
 	if !verify {
-		return
+		return nil
 	}
 
 	log.Info("TEST - validating result")
@@ -401,6 +445,8 @@ func tryConfig(th *test.TestHelper, file string, ticks int, wait time.Duration,
 	} else {
 		validateAgainstTaskMapping(th, c)
 	}
+
+	return c
 }
 
 //
@@ -484,6 +530,28 @@ func validatePlatforms(th *test.TestHelper, ref string, task *sync.Task,
 				os, arch, _ = util.SplitPlatform(mapping.Platform)
 			}
 			th.AssertEqual(fmt.Sprintf("%s/%s", os, arch), info)
+		}
+	}
+}
+
+//
+func validateDigests(th *test.TestHelper, c *sync.SyncConfig,
+	expectations map[string][]string) {
+
+	for _, t := range c.Tasks {
+		th.AssertNoError(t.Target.RefreshAuth())
+
+		for _, m := range t.Mappings {
+			ref := fmt.Sprintf("%s%s", t.Target.Registry, m.To)
+
+			for _, d := range expectations[m.To] {
+				info, err := skopeo.Inspect(
+					fmt.Sprintf("%s@%s", ref, d), "", "{{.Digest}}",
+					util.DecodeJSONAuth(t.Target.GetAuth()), "",
+					t.Target.SkipTLSVerify)
+				th.AssertNoError(err)
+				th.AssertEqual(d, info)
+			}
 		}
 	}
 }

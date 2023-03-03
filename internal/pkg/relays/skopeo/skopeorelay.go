@@ -139,9 +139,9 @@ func (r *SkopeoRelay) Sync(opt *relays.SyncOptions) error {
 		log.WithFields(
 			log.Fields{"tag": t, "platform": opt.Platform}).Info("syncing tag")
 
+		src, trgt := util.JoinRefsAndTag(opt.SrcRef, opt.TrgtRef, t)
 		rc := append(cmd,
-			fmt.Sprintf("docker://%s:%s", opt.SrcRef, t),
-			fmt.Sprintf("docker://%s:%s", opt.TrgtRef, t))
+			fmt.Sprintf("docker://%s", src), fmt.Sprintf("docker://%s", trgt))
 
 		switch opt.Platform {
 		case "":
