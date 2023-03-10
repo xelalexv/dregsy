@@ -92,7 +92,7 @@ When syncing via a *Docker* relay, do not use the same *Docker* daemon for build
 
 ### Image Matching <sup>*&#946; feature*</sup>
 
-The `mappings` section of a task can employ *Go* regular expressions for describing what images to sync, and how to change the destination path and name of an image. Details about how this works and examples can be found in this [design document](doc/design-image-matching.md). Also keep in mind that regular expressions can be surprising at times, so it would be a good idea to try them out first in a *Go* playground. You may otherwise potentially sync large numbers of images, clogging your target registry, or running into rate limits. Feedback about this feature is encouraged! 
+The `mappings` section of a task can employ *Go* regular expressions for describing what images to sync, and how to change the destination path and name of an image. Details about how this works and examples can be found in this [design document](doc/design-image-matching.md). Also keep in mind that regular expressions can be surprising at times, so it would be a good idea to try them out first in a *Go* playground. You may otherwise potentially sync large numbers of images, clogging your target registry, or running into rate limits. Feedback about this feature is encouraged!
 
 
 ### Tag Filtering <sup>*&#946; feature*</sup>
@@ -197,6 +197,13 @@ Note however that you either need to set environment variables `AWS_ACCESS_KEY_I
 If a source or target is a *Google Container Registry (GCR)* or a *Google Artifact Registry* for containers, `auth` may be omitted altogether. In this case either `GOOGLE_APPLICATION_CREDENTIALS` variable must be set (which is supposed to contain a path to a JSON file with credentials for a *GCP* service account), or *dregsy* must be run on a *GCE* instance with an appropriate service account attached. `registry` must be either specified as any of the *GCR* addresses (i.e. `gcr.io`, `us.gcr.io`, `eu.gcr.io`, or `asia.gcr.io`), or have the suffix `-docker.pkg.dev` for artifact registry. The `from`/`to` mapping must include your *GCP* project name (i.e. `your-project-123/your-image`). Note that `GOOGLE_APPLICATION_CREDENTIALS`, if set, takes precedence even on a *GCE* instance.
 
 If you want to use *GCR* or artifact registry as the source for a public image, you can deactivate authentication all together by setting `auth` to `none`.
+
+You can also authenticate with an OAuth2 token as described in the [Artifact Registry Authentication -> Access token](https://cloud.google.com/artifact-registry/docs/docker/authentication#token) documentation by creating the base64 encoded credentials for `auth` from JSON like this:
+
+```
+{ "username": "oauth2accesstoken", "password": <oauth2 token as described in the Artifact Registry documentation> }
+```
+
 
 ## Usage
 

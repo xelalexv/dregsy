@@ -28,7 +28,7 @@ type Auther func(*Credentials) string
 
 //
 func BasicAuth(c *Credentials) string {
-	if isEmpty(c) {
+	if IsEmpty(c) {
 		return ""
 	}
 	return base64Encode(fmt.Sprintf("%s:%s", c.username, c.password))
@@ -36,15 +36,16 @@ func BasicAuth(c *Credentials) string {
 
 //
 func BasicAuthJSON(c *Credentials) string {
-	if isEmpty(c) {
+	if IsEmpty(c) {
 		return ""
 	}
 	return base64Encode(fmt.Sprintf(
 		`{"username": "%s", "password": "%s"}`, c.username, c.password))
 }
 
-//
-func isEmpty(c *Credentials) bool {
+// Returns true if the credentials are nil or if both the username and
+// password are empty.
+func IsEmpty(c *Credentials) bool {
 	return c == nil || (c.username == "" && c.password == "")
 }
 
