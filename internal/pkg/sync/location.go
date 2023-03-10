@@ -75,6 +75,8 @@ func (l *Location) validate() error {
 		}
 		l.creds = crd
 		l.Auth = ""
+
+		log.WithField("registry", l.Registry).Infof("using credentials from config, username: %s", l.creds.Username())
 	} else {
 		l.creds = &auth.Credentials{}
 	}
@@ -100,7 +102,10 @@ func (l *Location) validate() error {
 			l.Registry)
 	}
 
-	if l.IsGCR() && !disableAuth {
+	// If the credentials were provided we're assuming the user wants
+	// to use them and not configure the refresher, otherwise (unless auth is disabled)
+	// we'll use the GCR refresher.
+	if l.IsGCR() && (!disableAuth || auth.IsEmpty(l.creds)) {
 		l.creds.SetRefresher(auth.NewGCRAuthRefresher())
 	}
 
