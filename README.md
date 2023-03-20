@@ -210,6 +210,34 @@ If these mechanisms are not applicable in your use case, you can also authentica
 If you want to use *GCR* or artifact registry as the source for a public image, you can deactivate authentication all together by setting `auth` to `none`.
 
 
+### Keeping the Config [*Dry*](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) & Secure
+
+If you need to use the same configuration items in several places, for example when you want to sync the same image mapping from one source registry to several different destinations, you can use *YAML* [anchors & aliases](https://yaml.org/spec/1.2.2/#alias-nodes) to avoid duplication. For example:
+
+```YAML
+tasks:
+- name: one
+  source: &source
+    registry: source.reg
+  target:
+    registry: foo
+  mappings: &mappings
+  - from: library/busybox
+    to: base/library/busybox
+    tags: ['a', 'b', 'c']
+  - ...
+- name: two
+  source: *source
+  target:
+    registry: bar
+  mappings: *mappings
+```
+
+This sets the anchors `source` and `mappings` for the source registry and the desired mapping on their first occurrence, which are then referenced with `*source` and `*mappings` wherever else they are needed.
+
+If you want to avoid including secrets such as registry passwords in the config, you can put `${...}` style variables in their place, and use for example `envsubst` (either standard from package repos, or [this one](https://github.com/a8m/envsubst) for more options) to substitute them during deployment, while secrets are present in the environment.
+
+
 ## Usage
 
 ```bash
