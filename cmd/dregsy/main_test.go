@@ -64,12 +64,28 @@ func TestE2EDockerPlatform(t *testing.T) {
 
 //
 func TestE2EDockerECR(t *testing.T) {
-	registries.SkipIfECRNotConfigured(t)
+	registries.SkipIfECRNotConfigured(t, false)
 	p := test.GetParams()
-	registries.RemoveECRRepo(t, p)
+	registries.RemoveECRRepo(t, p, false)
 	tryConfig(test.NewTestHelper(t), "e2e/base/docker-ecr.yaml",
 		1, 0, true, nil, p)
-	registries.RemoveECRRepo(t, p)
+	registries.RemoveECRRepo(t, p, false)
+}
+
+//
+func TestE2EDockerECRPub(t *testing.T) {
+	registries.SkipIfECRNotConfigured(t, true)
+	p := test.GetParams()
+	registries.RemoveECRRepo(t, p, true)
+	tryConfig(test.NewTestHelper(t), "e2e/base/docker-ecr-pub.yaml",
+		1, 0, true, nil, p)
+	registries.RemoveECRRepo(t, p, true)
+}
+
+//
+func TestE2EDockerECRPubNoAuth(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/base/docker-ecr-pub-noauth.yaml",
+		1, 0, true, nil, test.GetParams())
 }
 
 //
@@ -135,7 +151,7 @@ func TestE2EDockerMappingDockerhubSearch(t *testing.T) {
 
 //
 func TestE2EDockerMappingECR(t *testing.T) {
-	registries.SkipIfECRNotConfigured(t)
+	registries.SkipIfECRNotConfigured(t, false)
 	tryConfig(test.NewTestHelper(t), "e2e/mapping/docker-ecr.yaml",
 		0, 0, true, map[string][]string{
 			"mapping-docker/ecr/kubika/brucket":       {"v0.0.1"},
@@ -199,12 +215,28 @@ func TestE2ESkopeoAllPlatforms(t *testing.T) {
 
 //
 func TestE2ESkopeoECR(t *testing.T) {
-	registries.SkipIfECRNotConfigured(t)
+	registries.SkipIfECRNotConfigured(t, false)
 	p := test.GetParams()
-	registries.RemoveECRRepo(t, p)
+	registries.RemoveECRRepo(t, p, false)
 	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-ecr.yaml",
 		1, 0, true, nil, p)
-	registries.RemoveECRRepo(t, p)
+	registries.RemoveECRRepo(t, p, false)
+}
+
+//
+func TestE2ESkopeoECRPub(t *testing.T) {
+	registries.SkipIfECRNotConfigured(t, true)
+	p := test.GetParams()
+	registries.RemoveECRRepo(t, p, true)
+	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-ecr-pub.yaml",
+		1, 0, true, nil, p)
+	registries.RemoveECRRepo(t, p, true)
+}
+
+//
+func TestE2ESkopeoECRPubNoAuth(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo-ecr-pub-noauth.yaml",
+		1, 0, true, nil, test.GetParams())
 }
 
 //
@@ -270,7 +302,7 @@ func TestE2ESkopeoMappingDockerhubSearch(t *testing.T) {
 
 //
 func TestE2ESkopeoMappingECR(t *testing.T) {
-	registries.SkipIfECRNotConfigured(t)
+	registries.SkipIfECRNotConfigured(t, false)
 	tryConfig(test.NewTestHelper(t), "e2e/mapping/skopeo-ecr.yaml",
 		0, 0, true, map[string][]string{
 			"mapping-skopeo/ecr/kubika/brucket":       {"v0.0.1"},

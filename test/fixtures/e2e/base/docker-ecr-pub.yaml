@@ -1,0 +1,19 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+
+tasks:
+- name: test-ecr-pub
+  interval: 60
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+    auth: {{ .DockerhubAuth }}
+  target:
+    registry: {{ .ECRPubRegistry }}
+    auth-refresh: 10h
+  mappings:
+  - from: library/busybox
+    to: {{ .ECRPubRepo }}
+    tags: ['1.34.1', '1.35.0', 'latest']

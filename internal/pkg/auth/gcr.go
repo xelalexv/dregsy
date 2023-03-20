@@ -24,6 +24,8 @@ import (
 	"os"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -44,7 +46,10 @@ type gcrAuthRefresher struct {
 //
 func (rf *gcrAuthRefresher) Refresh(creds *Credentials) error {
 
+	log.WithField("expiry", rf.expiry).Debug("GCR auth refresh")
+
 	if time.Now().Before(rf.expiry) {
+		log.Debug("no auth refresh required")
 		return nil
 	}
 

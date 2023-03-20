@@ -49,6 +49,9 @@ GOARCH = $(shell ./hack/devenvutil get_architecture)
 #	${ITL}DREGSY_TEST_ECR_REPO${NRM} 		the repo to use within the ECR instance;
 #					defaults to ${DIM}dregsy/test${NRM}
 #
+#	${ITL}DREGSY_TEST_ECR_PUB_REGISTRY${NRM}	the public ECR instance to use
+#	${ITL}DREGSY_TEST_ECR_PUB_REPO${NRM} 	the repo to use within the public ECR instance
+#
 #	${ITL}AWS_ACCESS_KEY_ID${NRM}		credentials for AWS account in which ECR instance for
 #	${ITL}AWS_SECRET_ACCESS_KEY${NRM}		testing is located; the user associated with these
 #					credentials needs to have sufficient IAM permissions for

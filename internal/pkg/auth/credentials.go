@@ -16,6 +16,10 @@
 
 package auth
 
+import (
+	log "github.com/sirupsen/logrus"
+)
+
 //
 type Refresher interface {
 	Refresh(creds *Credentials) error
@@ -45,6 +49,12 @@ type Credentials struct {
 	token     *Token
 	refresher Refresher
 	auther    Auther
+}
+
+// Returns true if the credentials are nil or if both the username and password
+// are empty.
+func (c *Credentials) Empty() bool {
+	return c == nil || (c.username == "" && c.password == "")
 }
 
 //
@@ -88,6 +98,7 @@ func (c *Credentials) SetRefresher(r Refresher) {
 //
 func (c *Credentials) Refresh() error {
 	if c.refresher == nil {
+		log.Debug("no auth refresher, skipping")
 		return nil
 	}
 	return c.refresher.Refresh(c)
