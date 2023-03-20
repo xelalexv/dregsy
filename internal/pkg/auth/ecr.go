@@ -22,14 +22,20 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
+	"github.com/aws/aws-sdk-go/service/ecrpublic"
 )
 
 //
-func NewECRAuthRefresher(account, region string, interval time.Duration) Refresher {
+func NewECRAuthRefresher(public bool, account, region string,
+	interval time.Duration) Refresher {
+
 	return &ecrAuthRefresher{
+		public:   public,
 		account:  account,
 		region:   region,
 		interval: interval,
@@ -38,6 +44,7 @@ func NewECRAuthRefresher(account, region string, interval time.Duration) Refresh
 
 //
 type ecrAuthRefresher struct {
+	public   bool
 	account  string
 	region   string
 	interval time.Duration
@@ -47,8 +54,15 @@ type ecrAuthRefresher struct {
 //
 func (rf *ecrAuthRefresher) Refresh(creds *Credentials) error {
 
+	log.WithFields(log.Fields{
+		"public":   rf.public,
+		"region":   rf.region,
+		"interval": rf.interval,
+		"expiry":   rf.expiry}).Debug("ECR auth refresh")
+
 	if rf.account == "" || rf.region == "" ||
 		rf.interval == 0 || time.Now().Before(rf.expiry) {
+		log.Debug("no auth refresh required")
 		return nil
 	}
 
@@ -57,18 +71,14 @@ func (rf *ecrAuthRefresher) Refresh(creds *Credentials) error {
 		return err
 	}
 
-	svc := ecr.New(sess, &aws.Config{Region: aws.String(rf.region)})
-	input := &ecr.GetAuthorizationTokenInput{
-		RegistryIds: []*string{aws.String(rf.account)},
-	}
-	authToken, err := svc.GetAuthorizationToken(input)
+	data, err := rf.getAuthData(sess)
 	if err != nil {
 		return err
 	}
 
-	for _, data := range authToken.AuthorizationData {
+	for _, d := range data {
 
-		output, err := base64.StdEncoding.DecodeString(*data.AuthorizationToken)
+		output, err := base64.StdEncoding.DecodeString(d)
 		if err != nil {
 			return err
 		}
@@ -87,4 +97,34 @@ func (rf *ecrAuthRefresher) Refresh(creds *Credentials) error {
 	}
 
 	return fmt.Errorf("no authorization data")
+}
+
+//
+func (rf *ecrAuthRefresher) getAuthData(sess *session.Session) ([]string, error) {
+
+	var ret []string
+
+	if rf.public {
+		svc := ecrpublic.New(sess, aws.NewConfig().WithRegion(rf.region))
+		output, err := svc.GetAuthorizationToken(nil)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, *output.AuthorizationData.AuthorizationToken)
+
+	} else {
+		svc := ecr.New(sess, &aws.Config{Region: aws.String(rf.region)})
+		input := &ecr.GetAuthorizationTokenInput{
+			RegistryIds: []*string{aws.String(rf.account)},
+		}
+		output, err := svc.GetAuthorizationToken(input)
+		if err != nil {
+			return nil, err
+		}
+		for _, data := range output.AuthorizationData {
+			ret = append(ret, *data.AuthorizationToken)
+		}
+	}
+
+	return ret, nil
 }

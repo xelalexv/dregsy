@@ -21,14 +21,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ecr"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/xelalexv/dregsy/internal/pkg/registry"
-	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
 //
@@ -190,55 +185,9 @@ func (t *Task) mappingRefs(m *Mapping) ([][2]string, error) {
 
 //
 func (t *Task) ensureTargetExists(ref string) error {
-
-	isEcr, region, account := t.Target.GetECR()
-
-	if isEcr {
-
-		_, path, _ := util.SplitRef(ref)
-		if len(path) == 0 {
-			return nil
-		}
-
-		sess, err := session.NewSession()
-		if err != nil {
-			return err
-		}
-
-		svc := ecr.New(sess, &aws.Config{
-			Region: aws.String(region),
-		})
-
-		inpDescr := &ecr.DescribeRepositoriesInput{
-			RegistryId:      aws.String(account),
-			RepositoryNames: []*string{aws.String(path)},
-		}
-
-		out, err := svc.DescribeRepositories(inpDescr)
-		if err == nil && len(out.Repositories) > 0 {
-			log.WithField("ref", ref).Info("target already exists")
-			return nil
-		}
-
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				if aerr.Code() != ecr.ErrCodeRepositoryNotFoundException {
-					return err
-				}
-			} else {
-				return err
-			}
-		}
-
-		log.WithField("ref", ref).Info("creating target")
-		inpCrea := &ecr.CreateRepositoryInput{
-			RepositoryName: aws.String(path),
-		}
-
-		if _, err := svc.CreateRepository(inpCrea); err != nil {
-			return err
-		}
+	log.WithField("ref", ref).Debug("ensuring target exists")
+	if isEcr, pub, region, account := t.Target.GetECR(); isEcr {
+		return registry.CreateECRTarget(ref, region, account, pub)
 	}
-
 	return nil
 }

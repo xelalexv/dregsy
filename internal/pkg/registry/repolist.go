@@ -94,7 +94,7 @@ func NewRepoList(registry string, insecure bool, typ ListSourceType,
 		}
 
 	case Catalog, "":
-		isECR, region, account := IsECR(registry)
+		isECR, public, region, account := IsECR(registry)
 		if isECR {
 			// catalog can be used with ECR, but pagination doesn't work; it
 			// requires an extra `NextToken` parameter which is not standard
@@ -102,7 +102,11 @@ func NewRepoList(registry string, insecure bool, typ ListSourceType,
 			// lib; if the registry is ECR we therefore use a dedicated ECR
 			// lister based on the AWS Go SDK
 			log.Info("using dedicated ECR lister instead of standard catalog")
-			list.source = newECR(registry, region, account)
+			if public {
+				list.source = newECRPub(registry, account)
+			} else {
+				list.source = newECR(registry, region, account)
+			}
 		} else {
 			list.source = newCatalog(registry, insecure,
 				strings.HasSuffix(server, ".gcr.io"), listCreds)

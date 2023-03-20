@@ -32,6 +32,8 @@ const (
 	EnvSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
 	EnvECRRegistry     = "DREGSY_TEST_ECR_REGISTRY"
 	EnvECRRepo         = "DREGSY_TEST_ECR_REPO"
+	EnvECRPubRegistry  = "DREGSY_TEST_ECR_PUB_REGISTRY"
+	EnvECRPubRepo      = "DREGSY_TEST_ECR_PUB_REPO"
 
 	// GCP
 	EnvGCPCreds = "GOOGLE_APPLICATION_CREDENTIALS"
@@ -53,32 +55,36 @@ const (
 
 //
 type Params struct {
-	DockerHost    string
-	ECRRegistry   string
-	ECRRepo       string
-	GCRHost       string
-	GCRProject    string
-	GCRImage      string
-	GARHost       string
-	GARProject    string
-	GARImage      string
-	DockerhubAuth string
-	LocalAuth     string
+	DockerHost     string
+	ECRRegistry    string
+	ECRRepo        string
+	ECRPubRegistry string
+	ECRPubRepo     string
+	GCRHost        string
+	GCRProject     string
+	GCRImage       string
+	GARHost        string
+	GARProject     string
+	GARImage       string
+	DockerhubAuth  string
+	LocalAuth      string
 }
 
 //
 func GetParams() *Params {
 
 	ret := &Params{
-		DockerHost:  os.Getenv(EnvDockerHost),
-		ECRRegistry: os.Getenv(EnvECRRegistry),
-		ECRRepo:     os.Getenv(EnvECRRepo),
-		GCRHost:     os.Getenv(EnvGCRHost),
-		GCRProject:  os.Getenv(EnvGCRProject),
-		GCRImage:    os.Getenv(EnvGCRImage),
-		GARHost:     os.Getenv(EnvGARHost),
-		GARProject:  os.Getenv(EnvGARProject),
-		GARImage:    os.Getenv(EnvGARImage),
+		DockerHost:     os.Getenv(EnvDockerHost),
+		ECRRegistry:    os.Getenv(EnvECRRegistry),
+		ECRRepo:        os.Getenv(EnvECRRepo),
+		ECRPubRegistry: os.Getenv(EnvECRPubRegistry),
+		ECRPubRepo:     os.Getenv(EnvECRPubRepo),
+		GCRHost:        os.Getenv(EnvGCRHost),
+		GCRProject:     os.Getenv(EnvGCRProject),
+		GCRImage:       os.Getenv(EnvGCRImage),
+		GARHost:        os.Getenv(EnvGARHost),
+		GARProject:     os.Getenv(EnvGARProject),
+		GARImage:       os.Getenv(EnvGARImage),
 	}
 
 	if creds, err := auth.NewCredentialsFromBasic(

@@ -1,0 +1,20 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+
+tasks:
+- name: test-ecr-pub
+  interval: 60
+  verbose: true
+  source:
+    registry: public.ecr.aws
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: docker/library/busybox
+    to: base-docker/ecr-pub-noauth/busybox
+    tags: ['1.36.0', 'latest']

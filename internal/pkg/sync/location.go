@@ -37,6 +37,11 @@ type Location struct {
 	ListerConfig  map[string]string `yaml:"lister"`
 	ListerType    registry.ListSourceType
 	//
+	ecr     bool
+	public  bool
+	region  string
+	account string
+	//
 	creds *auth.Credentials
 }
 
@@ -76,9 +81,22 @@ func (l *Location) validate() error {
 		l.creds = crd
 		l.Auth = ""
 
-		log.WithField("registry", l.Registry).Infof("using credentials from config, username: %s", l.creds.Username())
+		log.WithFields(log.Fields{
+			"registry": l.Registry,
+			"username": l.creds.Username(),
+		}).Info("using credentials from config")
+
 	} else {
 		l.creds = &auth.Credentials{}
+	}
+
+	l.ecr, l.public, l.region, l.account = registry.IsECR(l.Registry)
+
+	if l.ecr && l.public {
+		p := strings.Split(l.Registry, "@")
+		if len(p) > 1 {
+			l.Registry = p[1]
+		}
 	}
 
 	var interval time.Duration
@@ -87,25 +105,26 @@ func (l *Location) validate() error {
 		interval = *l.AuthRefresh
 		if interval < minimumAuthRefreshInterval {
 			interval = time.Duration(minimumAuthRefreshInterval)
-			log.WithField("registry", l.Registry).
-				Warnf("auth-refresh too short, setting to minimum: %s",
-					minimumAuthRefreshInterval)
+			log.WithFields(log.Fields{
+				"registry": l.Registry,
+				"minimum":  minimumAuthRefreshInterval,
+			}).Warn("auth-refresh too short, setting to minimum")
 		}
 	}
 
-	if l.IsECR() {
-		_, region, account := l.GetECR()
-		l.creds.SetRefresher(auth.NewECRAuthRefresher(account, region, interval))
+	if l.ecr {
+		l.creds.SetRefresher(
+			auth.NewECRAuthRefresher(l.public, l.account, l.region, interval))
 	} else if interval > 0 {
 		return fmt.Errorf(
 			"'%s' wants authentication refresh, but is not an ECR registry",
 			l.Registry)
 	}
 
-	// If the credentials were provided we're assuming the user wants
-	// to use them and not configure the refresher, otherwise (unless auth is disabled)
+	// If the credentials were provided we're assuming the user wants to use
+	// them and not configure the refresher, otherwise (unless auth is disabled)
 	// we'll use the GCR refresher.
-	if l.IsGCR() && (!disableAuth || auth.IsEmpty(l.creds)) {
+	if l.IsGCR() && (!disableAuth || l.creds.Empty()) {
 		l.creds.SetRefresher(auth.NewGCRAuthRefresher())
 	}
 
@@ -131,14 +150,13 @@ func (l *Location) RefreshAuth() error {
 }
 
 //
-func (l *Location) IsECR() bool {
-	ecr, _, _ := l.GetECR()
-	return ecr
+func (l *Location) IsECR() (bool, bool) {
+	return l.ecr, l.public
 }
 
 //
-func (l *Location) GetECR() (ecr bool, region, account string) {
-	return registry.IsECR(l.Registry)
+func (l *Location) GetECR() (bool, bool, string, string) {
+	return l.ecr, l.public, l.region, l.account
 }
 
 //

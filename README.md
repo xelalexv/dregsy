@@ -126,6 +126,7 @@ tags:
 
 This will select all releases starting with version `2.0.0`, but only for the `-alpine` and `-buster` suffixes.
 
+
 ### Platform Selection (*Multi-Platform* Source Images) <sup>*&#945; feature*</sup>
 
 When the source image is a *multi-platform* image, the platform image adequate for the system on which *dregsy* runs is synced by default. Where this is not applicable, the desired platform can be specified via the `platform` setting, separately for each mapping. To sync all available platform images, `platform: all` can be used. Note however that this shorthand is only supported by the *Skopeo* relay.
@@ -162,7 +163,7 @@ If a source or target is an *AWS ECR* registry, you need to retrieve the `auth` 
 
 Note however that you either need to set environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for the *AWS* account you want to use and a user with sufficient permissions. Or if you're running *dregsy* on an *EC2* instance in your *AWS* account, the machine should have an appropriate instance profile. An according policy could look like this:
 
-```json
+```JSON
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -192,17 +193,21 @@ Note however that you either need to set environment variables `AWS_ACCESS_KEY_I
 }
 ```
 
+
 ### *Google Container Registry (GCR)* and *Google Artifact Registry*
 
-If a source or target is a *Google Container Registry (GCR)* or a *Google Artifact Registry* for containers, `auth` may be omitted altogether. In this case either `GOOGLE_APPLICATION_CREDENTIALS` variable must be set (which is supposed to contain a path to a JSON file with credentials for a *GCP* service account), or *dregsy* must be run on a *GCE* instance with an appropriate service account attached. `registry` must be either specified as any of the *GCR* addresses (i.e. `gcr.io`, `us.gcr.io`, `eu.gcr.io`, or `asia.gcr.io`), or have the suffix `-docker.pkg.dev` for artifact registry. The `from`/`to` mapping must include your *GCP* project name (i.e. `your-project-123/your-image`). Note that `GOOGLE_APPLICATION_CREDENTIALS`, if set, takes precedence even on a *GCE* instance.
+If a source or target is a *Google Container Registry (GCR)* or a *Google Artifact Registry* for containers, `auth` may be omitted altogether. In this case either `GOOGLE_APPLICATION_CREDENTIALS` variable must be set (which is supposed to contain a path to a *JSON* file with credentials for a *GCP* service account), or *dregsy* must be run on a *GCE* instance with an appropriate service account attached. `registry` must be either specified as any of the *GCR* addresses (i.e. `gcr.io`, `us.gcr.io`, `eu.gcr.io`, or `asia.gcr.io`), or have the suffix `-docker.pkg.dev` for artifact registry. The `from`/`to` mapping must include your *GCP* project name (i.e. `your-project-123/your-image`). Note that `GOOGLE_APPLICATION_CREDENTIALS`, if set, takes precedence even on a *GCE* instance.
+
+If these mechanisms are not applicable in your use case, you can also authenticate with an *OAuth2* token as described in the [Artifact Registry Authentication -> Access token](https://cloud.google.com/artifact-registry/docs/docker/authentication#token) documentation. This token will then be used continuously without performing any authentication refreshes. In this case, set the content of `auth` to the base64 encoded *JSON* credentials:
+
+```JSON
+{
+    "username": "oauth2accesstoken",
+    "password": <oauth2 token as described in the Artifact Registry documentation>
+}
+```
 
 If you want to use *GCR* or artifact registry as the source for a public image, you can deactivate authentication all together by setting `auth` to `none`.
-
-You can also authenticate with an OAuth2 token as described in the [Artifact Registry Authentication -> Access token](https://cloud.google.com/artifact-registry/docs/docker/authentication#token) documentation by creating the base64 encoded credentials for `auth` from JSON like this:
-
-```
-{ "username": "oauth2accesstoken", "password": <oauth2 token as described in the Artifact Registry documentation> }
-```
 
 
 ## Usage

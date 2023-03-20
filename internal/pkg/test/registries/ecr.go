@@ -24,13 +24,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
+	"github.com/aws/aws-sdk-go/service/ecrpublic"
 
 	"github.com/xelalexv/dregsy/internal/pkg/sync"
 	"github.com/xelalexv/dregsy/internal/pkg/test"
 )
 
 //
-func SkipIfECRNotConfigured(t *testing.T) {
+func SkipIfECRNotConfigured(t *testing.T, public bool) {
 	var missing []string
 	if os.Getenv(test.EnvAccessKeyID) == "" {
 		missing = append(missing, test.EnvAccessKeyID)
@@ -38,8 +39,12 @@ func SkipIfECRNotConfigured(t *testing.T) {
 	if os.Getenv(test.EnvSecretAccessKey) == "" {
 		missing = append(missing, test.EnvSecretAccessKey)
 	}
-	if os.Getenv(test.EnvECRRegistry) == "" {
-		missing = append(missing, test.EnvECRRegistry)
+	reg := test.EnvECRRegistry
+	if public {
+		reg = test.EnvECRPubRegistry
+	}
+	if os.Getenv(reg) == "" {
+		missing = append(missing, reg)
 	}
 	if len(missing) > 0 {
 		t.Skipf("skipping, ECR not configured, missing these environment variables: %v",
@@ -48,10 +53,16 @@ func SkipIfECRNotConfigured(t *testing.T) {
 }
 
 //
-func RemoveECRRepo(t *testing.T, p *test.Params) {
+func RemoveECRRepo(t *testing.T, p *test.Params, public bool) {
 
-	loc := &sync.Location{Registry: p.ECRRegistry}
-	isEcr, region, _ := loc.GetECR()
+	var loc *sync.Location
+	if public {
+		loc = &sync.Location{Registry: p.ECRPubRegistry}
+	} else {
+		loc = &sync.Location{Registry: p.ECRRegistry}
+	}
+
+	isEcr, pub, region, _ := loc.GetECR()
 
 	if !isEcr {
 		return
@@ -62,21 +73,42 @@ func RemoveECRRepo(t *testing.T, p *test.Params) {
 		t.Fatal(err)
 	}
 
-	svc := ecr.New(sess, &aws.Config{
-		Region: aws.String(region),
-	})
+	if pub {
+		svc := ecrpublic.New(sess, &aws.Config{
+			Region: aws.String(region),
+		})
 
-	inpDel := &ecr.DeleteRepositoryInput{
-		Force:          aws.Bool(true),
-		RepositoryName: aws.String(p.ECRRepo),
-	}
-
-	if _, err := svc.DeleteRepository(inpDel); err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == ecr.ErrCodeRepositoryNotFoundException {
-				return
-			}
+		inpDel := &ecrpublic.DeleteRepositoryInput{
+			Force:          aws.Bool(true),
+			RepositoryName: aws.String(p.ECRRepo),
 		}
-		t.Fatal(err)
+
+		if _, err := svc.DeleteRepository(inpDel); err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				if aerr.Code() == ecrpublic.ErrCodeRepositoryNotFoundException {
+					return
+				}
+			}
+			t.Fatal(err)
+		}
+
+	} else {
+		svc := ecr.New(sess, &aws.Config{
+			Region: aws.String(region),
+		})
+
+		inpDel := &ecr.DeleteRepositoryInput{
+			Force:          aws.Bool(true),
+			RepositoryName: aws.String(p.ECRRepo),
+		}
+
+		if _, err := svc.DeleteRepository(inpDel); err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				if aerr.Code() == ecr.ErrCodeRepositoryNotFoundException {
+					return
+				}
+			}
+			t.Fatal(err)
+		}
 	}
 }
