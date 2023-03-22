@@ -1,5 +1,37 @@
 # Changelog
 
+## post-`0.4.5` after merging support for pulling with image digests wit skopeo
+- For Skopeo relay, adding support for pulling container images based on the image digest. An image digest looks like this: `sha256:5e8e0509e829bb8f990249135a36e81a3ecbe94294e7a185cc14616e5fad96bd`.
+  Below is the behavior of the `skopeo copy` Sync with support for both
+  digests and tags.
+  Warning: Skopeo Docker references with both a tag and a digest are
+  currently not supported.
+
+  The `digests` list & `tags` list are stored in a `mapping` struct.
+  As example, look at the file
+  `test/fixtures/config/skopeo-digest-only-valid.yaml`
+
+  | `digests` list | `tags` list | `dregsy` behavior                             | diff with 0.4.4 |
+  |----------------|-------------|-----------------------------------------------|-----------------|
+  | empty          | empty       | pulls all tags                                | same            |
+  | empty          | NOT empty   | pulls filtered tags only                      | same            |
+  | NOT empty      | NOT empty   | pulls filtered tags AND pulls correct digests | different       |
+  | NOT empty      | empty       | pulls correct digests only, ignores tags      | different       |
+
+  A "correct digest" is a correctly formated AND an existing digest.
+  Skopeo is used to verify if the digest exists before trying to copy it.
+- Adding a simple bash script that uses `openssl` and `podman` to instantiate a simple registryv2 service with an HTTPS endpoint: `test/bin/create_local_registry_https.sh`, for testing purpose.
+- Adding `dregsy` configuration samples, for testing purpose:
+    + `skopeo-digest-bad-formated.yaml`: a config sample with image digests that are badly formated. Dregsy should raise an error in logs and skip to next tag or digest.
+    + `skopeo-digest-dont-exist.yaml`: a config sample with image digests that are formated correctly, but that does not exist. Dregsy should raise an error in logs and skip to next tag or digest.
+    + `skopeo-digest-duplicates.yaml`: a config sample with duplicates image digests. Dregsy should eliminate duplicates and only copy once.
+    + `skopeo-digest-only-valid.yaml`: a config sample with valid image digests that exist on docker hub (`docker.io`). Dregsy should copy them without issue.
+- Adding 2 `podman` or `docker` Containerfiles for x86 and ARM64 architecture: `Containerfile.aarch64-arm64` and `Containerfile.x86_64-amd64`. For testing purpose and local build.
+- Adding a section in the README: _### Building only the `dregsy` binary with `podman`_
+- upgrades:
+    + *Go* 1.20.2 in `Containerfile.aarch64-arm64`, `Containerfile.x86_64-amd64`.
+
+
 ## `0.4.5`
 - upgrades:
     + *Go* 1.20.1

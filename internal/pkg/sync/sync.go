@@ -31,21 +31,18 @@ import (
 	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
-//
 type Relay interface {
 	Prepare() error
 	Dispose() error
 	Sync(opt *relays.SyncOptions) error
 }
 
-//
 type Sync struct {
 	relay    Relay
 	shutdown chan bool
 	ticks    chan bool
 }
 
-//
 func New(conf *SyncConfig) (*Sync, error) {
 
 	sync := &Sync{}
@@ -82,13 +79,11 @@ func New(conf *SyncConfig) (*Sync, error) {
 	return sync, nil
 }
 
-//
 func (s *Sync) Shutdown() {
 	s.shutdown <- true
 	s.WaitForTick()
 }
 
-//
 func (s *Sync) tick() {
 	select {
 	case s.ticks <- true:
@@ -96,17 +91,14 @@ func (s *Sync) tick() {
 	}
 }
 
-//
 func (s *Sync) WaitForTick() {
 	<-s.ticks
 }
 
-//
 func (s *Sync) Dispose() {
 	s.relay.Dispose()
 }
 
-//
 func (s *Sync) SyncFromConfig(conf *SyncConfig, taskFilter string) error {
 
 	if taskFilter == "" {
@@ -175,7 +167,6 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig, taskFilter string) error {
 	return nil
 }
 
-//
 func (s *Sync) syncTask(t *Task) {
 
 	if t.tooSoon() {
@@ -222,6 +213,7 @@ func (s *Sync) syncTask(t *Task) {
 				break
 			}
 
+			// add digests support
 			if err := s.relay.Sync(&relays.SyncOptions{
 				SrcRef:            src,
 				SrcAuth:           t.Source.GetAuth(),
@@ -231,6 +223,8 @@ func (s *Sync) syncTask(t *Task) {
 				TrgtSkipTLSVerify: t.Target.SkipTLSVerify,
 				Tags:              m.tagSet,
 				Platform:          m.Platform,
+				Digests:           m.digestList,
+				PreserveDigests:   m.PreserveDigests,
 				Verbose:           t.Verbose}); err != nil {
 				log.Error(err)
 				t.fail(true)

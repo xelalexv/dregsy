@@ -36,24 +36,21 @@ const defaultCertsBaseDir = "/etc/skopeo/certs.d"
 var skopeoBinary string
 var certsBaseDir string
 
-//
 func init() {
 	skopeoBinary = defaultSkopeoBinary
 	certsBaseDir = defaultCertsBaseDir
 }
 
-//
+// corresponds to command "$ skopeo list-tags docker://docker.io/alpine"
 type tagList struct {
 	Repository string   `json:"Repository"`
 	Tags       []string `json:"Tags"`
 }
 
-//
 func CertsDirForRepo(r string) string {
 	return fmt.Sprintf("%s/%s", certsBaseDir, withoutPort(r))
 }
 
-//
 func ListAllTags(ref, creds, certDir string, skipTLSVerify bool) ([]string, error) {
 
 	ret, err := info([]string{"list-tags"}, ref, creds, certDir, skipTLSVerify)
@@ -69,7 +66,6 @@ func ListAllTags(ref, creds, certDir string, skipTLSVerify bool) ([]string, erro
 	return list.Tags, nil
 }
 
-//
 func Inspect(ref, platform, format, creds, certDir string, skipTLSVerify bool) (
 	string, error) {
 
@@ -86,7 +82,6 @@ func Inspect(ref, platform, format, creds, certDir string, skipTLSVerify bool) (
 	}
 }
 
-//
 func info(cmd []string, ref, creds, certDir string, skipTLSVerify bool) (
 	[]byte, error) {
 
@@ -114,7 +109,6 @@ func info(cmd []string, ref, creds, certDir string, skipTLSVerify bool) (
 	return bufOut.Bytes(), nil
 }
 
-//
 func addPlatformOverrides(cmd []string, platform string) []string {
 
 	if platform != "" {
@@ -133,7 +127,6 @@ func addPlatformOverrides(cmd []string, platform string) []string {
 	return cmd
 }
 
-//
 func chooseOutStream(out io.Writer, verbose, isErrorStream bool) io.Writer {
 	if verbose {
 		if out != nil {
@@ -147,7 +140,6 @@ func chooseOutStream(out io.Writer, verbose, isErrorStream bool) io.Writer {
 	return ioutil.Discard
 }
 
-//
 func runSkopeo(outWr, errWr io.Writer, verbose bool, args ...string) error {
 
 	cmd := exec.Command(skopeoBinary, args...)
@@ -166,7 +158,6 @@ func runSkopeo(outWr, errWr io.Writer, verbose bool, args ...string) error {
 	return nil
 }
 
-//
 func decodeTagList(tl []byte) (*tagList, error) {
 	var ret tagList
 	if err := json.Unmarshal(tl, &ret); err != nil {
@@ -175,11 +166,39 @@ func decodeTagList(tl []byte) (*tagList, error) {
 	return &ret, nil
 }
 
-//
 func withoutPort(repo string) string {
 	ix := strings.Index(repo, ":")
 	if ix == -1 {
 		return repo
 	}
 	return repo[:ix]
+}
+
+// Verify if one image digest exist on the registry.
+// Performs a skopeo inspect. Example:
+// skopeo inspect  --tls-verify=false  --format="{{.Digest}}" --cert-dir ./certs/ docker://localhost:5000/skopeo/library/busybox@sha256:5e8e0509e829bb8f990249135a36e81a3ecbe94294e7a185cc14616e5fad96bd
+func digestExist(digest string, srcRef, creds, certDir string, skipTLSVerify bool) (bool, error) {
+	// concat srcRef and digest. Example:
+	// if srcRef is "localhost:5000/skopeo/library/busybox"
+	// and digest is "sha256:5e8e0509e829bb8f990249135a36e81a3ecbe94294e7a185cc14616e5fad96bd"
+	// then concat is localhost:5000/skopeo/library/busybox@sha256:5e8e0509e829bb8f990249135a36e81a3ecbe94294e7a185cc14616e5fad96bd
+	var refAndDig strings.Builder
+	refAndDig.WriteString(srcRef)
+	refAndDig.WriteString("@")
+	refAndDig.WriteString(digest)
+
+	log.Debugf("Verify if image digest exists: %s ", refAndDig.String())
+
+	if ret, err := Inspect(refAndDig.String(), "", "{{.Digest}}", creds, certDir, skipTLSVerify); err == nil {
+		if strings.Compare(ret, digest) == 0 {
+			log.Debugf("digest exists: %s", digest)
+			return true, nil
+		} else {
+			log.Debugf("digest does not exist: %s ", digest)
+			return false, nil
+		}
+	} else {
+		return false, fmt.Errorf("error while verifying that digest exist on the registry: %v", err)
+	}
+
 }

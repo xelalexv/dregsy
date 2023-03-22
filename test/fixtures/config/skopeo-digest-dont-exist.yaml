@@ -1,0 +1,34 @@
+relay: skopeo
+
+lister:
+  maxItems: 50
+  cacheDuration: 30m
+
+tasks:
+- name: test-skopeo-digest-dont-exist
+  interval: 30
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: 127.0.0.1:5000
+    #auth: <your_token_here>
+    skip-tls-verify: true
+  mappings:
+  # Using either the WEB GUI at https://hub.docker.com/_/busybox/tags. Or using
+  # the tool crane* to get digests from CLI.
+  # *crane : https://github.com/google/go-containerregistry/tree/main/cmd/crane
+  #
+  # $ crane digest --platform="linux/amd64" library/busybox@sha256:94dc472baeef08c56d37851614f7c2c02cf83fa449a355c193747ffd7e80f4ed
+  # Error: GET https://index.docker.io/v2/library/busybox/manifests/sha256:94dc472baeef08c56d37851614f7c2c02cf83fa449a355c193747ffd7e80f4ed: MANIFEST_UNKNOWN: manifest unknown; unknown manifest name=library/busybox revision=sha256:94dc472baeef08c56d37851614f7c2c02cf83fa449a355c193747ffd7e80f4ed
+  - from: library/busybox
+    to: skopeo/library/busybox
+    digests:
+    # below exists
+    - sha256:5e8e0509e829bb8f990249135a36e81a3ecbe94294e7a185cc14616e5fad96bd
+    # below exists
+    - sha256:6ba3c395f0a2941114d8dcdf80bedcc7e654252f5870dd94daff9cc3188f3eb2
+    # below does not exist
+    - sha256:94dc472baeef08c56d37851614f7c2c02cf83fa449a355c193747ffd7e80f4ed
+    # below exists
+    - sha256:76582bc9c59276ea11459bf5ff4f54fd5b7fd23ff622d80479156108fdd26470

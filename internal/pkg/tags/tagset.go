@@ -27,12 +27,10 @@ import (
 	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
-//
 const SemverPrefix = "semver:"
 const RegexpPrefix = "regex:"
 const KeepPrefix = "keep:"
 
-//
 func NewTagSet(tags []string) (*TagSet, error) {
 	ret := &TagSet{}
 	if err := ret.add(tags); err != nil {
@@ -41,7 +39,6 @@ func NewTagSet(tags []string) (*TagSet, error) {
 	return ret, nil
 }
 
-//
 type TagSet struct {
 	verbatim []string
 	semver   []semver.Range
@@ -49,7 +46,6 @@ type TagSet struct {
 	keep     []*util.Regex
 }
 
-//
 func (ts *TagSet) add(tags []string) error {
 	for _, t := range tags {
 		if isSemver(t) {
@@ -71,12 +67,10 @@ func (ts *TagSet) add(tags []string) error {
 	return nil
 }
 
-//
 func (ts *TagSet) addVerbatim(v string) {
 	ts.verbatim = append(ts.verbatim, v)
 }
 
-//
 func (ts *TagSet) addSemver(s string) error {
 	if r, e := semver.ParseRange(s[len(SemverPrefix):]); e != nil {
 		return e
@@ -86,19 +80,16 @@ func (ts *TagSet) addSemver(s string) error {
 	}
 }
 
-//
 func (ts *TagSet) addRegex(r string) (err error) {
 	ts.regex, err = ts.addFilter(r, RegexpPrefix, ts.regex)
 	return
 }
 
-//
 func (ts *TagSet) addKeep(r string) (err error) {
 	ts.keep, err = ts.addFilter(r, KeepPrefix, ts.keep)
 	return
 }
 
-//
 func (ts *TagSet) addFilter(regex, prefix string, list []*util.Regex) (
 	[]*util.Regex, error) {
 
@@ -110,32 +101,59 @@ func (ts *TagSet) addFilter(regex, prefix string, list []*util.Regex) (
 	}
 }
 
+// Return true if the tagSet is empty. Example:
 //
+//		```yaml
+//		# dregsy configuration file
+//		[...]
+//		mappings:
+//			# This tagSet below is NOT empty
+//			- from: test/image
+//			  to: archive/test/image
+//			  tags:
+//	 			- 'semver: >=1.31.0 <1.31.9'
+//				- 'regex: 1\.26\.[0-9]-(glibc|uclibc|musl)'
+//				- '1.29.4'
+//				- 'latest'
+//
+//			# This tagSet below IS empty
+//		  	- from: test/another-image
+//			  platform: linux/arm64/v8
+//		```
+//
+// Default behaviour of dregsy: When omitted, all image tags are synced.
+
 func (ts *TagSet) IsEmpty() bool {
 	return !ts.HasVerbatim() && !ts.HasSemver() && !ts.HasRegex()
 }
 
-//
+// Example of verbatim tags: "1.29.4" and "latest"
 func (ts *TagSet) HasVerbatim() bool {
 	return len(ts.verbatim) > 0
 }
 
-//
+// Example of Semver filters for tags: 'semver: >=1.31.0 <1.31.9'
 func (ts *TagSet) HasSemver() bool {
 	return len(ts.semver) > 0
 }
 
-//
+// Example of Regex for tags: 'regex: 1\.26\.[0-9]-(glibc|uclibc|musl)'
 func (ts *TagSet) HasRegex() bool {
 	return len(ts.regex) > 0
 }
 
-//
+// Return true when, in the dregsy config file, the tag field is completely
+// empty, or when tag field has a regex pattern, or when tag field has a
+// semantic versioning range.
+// This means dregsy should expand the list tags by requesting the registry
+// thanks to function ListAllTags.
+
 func (ts *TagSet) NeedsExpansion() bool {
 	return ts.IsEmpty() || ts.HasSemver() || ts.HasRegex()
 }
 
-//
+// Expand the list of tags, which means get a list of tag from the source
+// registry.
 func (ts *TagSet) Expand(lister func() ([]string, error)) ([]string, error) {
 
 	set := make(map[string]string)
@@ -187,7 +205,6 @@ func (ts *TagSet) Expand(lister func() ([]string, error)) ([]string, error) {
 	return ret, nil
 }
 
-//
 func (ts *TagSet) expandSemver(tags []string) []string {
 
 	var vers semver.Versions
@@ -216,7 +233,6 @@ func (ts *TagSet) expandSemver(tags []string) []string {
 	return ret
 }
 
-//
 func (ts *TagSet) expandRegex(tags []string) []string {
 
 	var ret []string
@@ -233,7 +249,6 @@ func (ts *TagSet) expandRegex(tags []string) []string {
 	return ret
 }
 
-//
 func (ts *TagSet) keepTag(t string) bool {
 	for _, regex := range ts.keep {
 		if !regex.Matches(t) {
@@ -243,24 +258,20 @@ func (ts *TagSet) keepTag(t string) bool {
 	return true
 }
 
-//
 func addToSet(s map[string]string, tags []string) {
 	for _, t := range tags {
 		s[t] = t
 	}
 }
 
-//
 func isSemver(tag string) bool {
 	return strings.HasPrefix(tag, SemverPrefix)
 }
 
-//
 func isRegex(tag string) bool {
 	return strings.HasPrefix(tag, RegexpPrefix)
 }
 
-//
 func isKeep(tag string) bool {
 	return strings.HasPrefix(tag, KeepPrefix)
 }

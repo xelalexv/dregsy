@@ -238,6 +238,38 @@ This sets the anchors `source` and `mappings` for the source registry and the de
 If you want to avoid including secrets such as registry passwords in the config, you can put `${...}` style variables in their place, and use for example `envsubst` (either standard from package repos, or [this one](https://github.com/a8m/envsubst) for more options) to substitute them during deployment, while secrets are present in the environment.
 
 
+### [`skopeo` only] Using image digest instead of tags
+
+For Skopeo relay, adding support for pulling container images based on the 
+image digest. An image digest looks like this: 
+`sha256:5e8e0509e829bb8f990249135a36e81a3ecbe94294e7a185cc14616e5fad96bd`.
+Below is the behavior of the `skopeo copy` Sync with support for both
+digests and tags.
+
+Warning: Skopeo Docker references with both a tag and a digest are
+currently not supported.
+
+The `digests` list & `tags` list are stored in a `mapping` struct.
+As example, look at the file
+`test/fixtures/config/skopeo-digest-only-valid.yaml`
+
+| `digests` list | `tags` list | `dregsy` behavior                             | diff with 0.4.4 |
+|----------------|-------------|-----------------------------------------------|-----------------|
+| empty          | empty       | pulls all tags                                | same            |
+| empty          | NOT empty   | pulls filtered tags only                      | same            |
+| NOT empty      | NOT empty   | pulls filtered tags AND pulls correct digests | different       |
+| NOT empty      | empty       | pulls correct digests only, ignores tags      | different       |
+
+A "correct digest" is a correctly formated AND an existing digest.
+Skopeo is used to verify if the digest exists before trying to copy it.
+
+- Adding `dregsy` configuration samples, for testing purpose:
+    + `skopeo-digest-bad-formated.yaml`: a config sample with image digests that are badly formated. Dregsy should raise an error in logs and skip to next tag or digest.
+    + `skopeo-digest-dont-exist.yaml`: a config sample with image digests that are formated correctly, but that does not exist. Dregsy should raise an error in logs and skip to next tag or digest.
+    + `skopeo-digest-duplicates.yaml`: a config sample with duplicates image digests. Dregsy should eliminate duplicates and only copy once.
+    + `skopeo-digest-only-valid.yaml`: a config sample with valid image digests that exist on docker hub (`docker.io`). Dregsy should copy them without issue.
+
+
 ## Usage
 
 ```bash
@@ -391,4 +423,20 @@ You can select a particular test case with the `-run` argument, which you can pa
 
 ```bash
 VERBOSE=y TEST_UBUNTU=n TEST_OPTS="-run TestE2ESkopeo.*" make tests
+```
+
+### Building only the `dregsy` binary with `podman`
+
+```bash
+mkdir dregsy-workspace
+cd dregsy-workspace
+git clone https://github.com/xelalexv/dregsy.git
+```
+
+```bash
+git switch skopeo-digest-support
+```
+
+```bash
+podman run --rm -v dregsy:/tmp/dregsy -w /tmp/dregsy docker.io/golang:1.20.2 go build -v -tags netgo -installsuffix netgo -ldflags -w -X main.DregsyVersion=0.4.5 -o dregsy ./cmd/dregsy
 ```

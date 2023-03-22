@@ -14,13 +14,18 @@
 	limitations under the License.
 */
 
+/*
+	An image digest is formated like this:
+	sha256:f271e74b17ced29b915d351685fd4644785c6d1559dd1f2d4189a5e851ef753a
+*/
+
 package relays
 
 import (
+	"github.com/xelalexv/dregsy/internal/pkg/digests"
 	"github.com/xelalexv/dregsy/internal/pkg/tags"
 )
 
-//
 type SyncOptions struct {
 	//
 	SrcRef           string
@@ -30,13 +35,16 @@ type SyncOptions struct {
 	TrgtRef           string
 	TrgtAuth          string
 	TrgtSkipTLSVerify bool
-	//
-	Tags     *tags.TagSet
-	Platform string
-	Verbose  bool
+	// Skopeo Docker references with both a tag and digest are currently not supported
+	Tags    *tags.TagSet
+	Digests *digests.DigestList
+	// skopeo copy --preserve-digests option
+	// TODO change location of PreserveDigests ? see internal/pkg/sync/task.go
+	PreserveDigests bool
+	Platform        string
+	Verbose         bool
 }
 
-//
 type Support interface {
 	Platform(p string) error
 }

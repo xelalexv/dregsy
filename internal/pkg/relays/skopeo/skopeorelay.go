@@ -29,26 +29,21 @@ import (
 
 const RelayID = "skopeo"
 
-//
 type RelayConfig struct {
 	Binary   string `yaml:"binary"`
 	CertsDir string `yaml:"certs-dir"`
 }
 
-//
 type Support struct{}
 
-//
 func (s *Support) Platform(p string) error {
 	return nil
 }
 
-//
 type SkopeoRelay struct {
 	wrOut io.Writer
 }
 
-//
 func NewSkopeoRelay(conf *RelayConfig, out io.Writer) *SkopeoRelay {
 
 	relay := &SkopeoRelay{}
@@ -68,7 +63,6 @@ func NewSkopeoRelay(conf *RelayConfig, out io.Writer) *SkopeoRelay {
 	return relay
 }
 
-//
 func (r *SkopeoRelay) Prepare() error {
 
 	bufOut := new(bytes.Buffer)
@@ -82,12 +76,25 @@ func (r *SkopeoRelay) Prepare() error {
 	return nil
 }
 
-//
 func (r *SkopeoRelay) Dispose() error {
 	return nil
 }
 
+// Sync with support for digests and tags.
+// Warning: Skopeo Docker references with both a tag and digest are
+// currently not supported.
 //
+// The `digests` list & `tags` list are stored in a mapping struct.
+//
+// | `digests` list | `tags` list | `dregsy` behavior                             | diff with 0.4.4 |
+// |----------------|-------------|-----------------------------------------------|-----------------|
+// | empty          | empty       | pulls all tags                                | same            |
+// | empty          | NOT empty   | pulls filtered tags only                      | same            |
+// | NOT empty      | NOT empty   | pulls filtered tags AND pulls correct digests | different       |
+// | NOT empty      | empty       | pulls correct digests only, ignores tags      | different       |
+//
+// A "correct digest" is a crrectly formated AND an existing digest.
+// Skopeo is used to verify the digest exists.
 func (r *SkopeoRelay) Sync(opt *relays.SyncOptions) error {
 
 	srcCreds := util.DecodeJSONAuth(opt.SrcAuth)
@@ -96,6 +103,13 @@ func (r *SkopeoRelay) Sync(opt *relays.SyncOptions) error {
 	cmd := []string{
 		"--insecure-policy",
 		"copy",
+	}
+
+	// Adding preserve digest option
+	// $ skopeo copy --preserve-digests [...]
+	if opt.PreserveDigests {
+		cmd = append(cmd, "--preserve-digests=true")
+		log.Debug("--preserve-digests=true")
 	}
 
 	if opt.SrcSkipTLSVerify {
@@ -124,41 +138,82 @@ func (r *SkopeoRelay) Sync(opt *relays.SyncOptions) error {
 		cmd = append(cmd, fmt.Sprintf("--dest-creds=%s", destCreds))
 	}
 
-	tags, err := opt.Tags.Expand(func() ([]string, error) {
-		return ListAllTags(opt.SrcRef, srcCreds, srcCertDir, opt.SrcSkipTLSVerify)
-	})
+	// Sync with support for digests and tags.
+	if !opt.Digests.IsEmpty() && opt.Tags.IsEmpty() {
+		log.Debug("Digest list is not empty but Tag list is empty: pulling image digest only - do not expand tags")
+	} else {
+		// Expand tags
+		log.Debug("Tag list is not empty: expanding tags")
+		tags, err := opt.Tags.Expand(func() ([]string, error) {
+			return ListAllTags(opt.SrcRef, srcCreds, srcCertDir, opt.SrcSkipTLSVerify)
+		})
 
-	if err != nil {
-		return fmt.Errorf("error expanding tags: %v", err)
-	}
-
-	errs := false
-
-	for _, t := range tags {
-
-		log.WithFields(
-			log.Fields{"tag": t, "platform": opt.Platform}).Info("syncing tag")
-
-		rc := append(cmd,
-			fmt.Sprintf("docker://%s:%s", opt.SrcRef, t),
-			fmt.Sprintf("docker://%s:%s", opt.TrgtRef, t))
-
-		switch opt.Platform {
-		case "":
-		case "all":
-			rc = append(rc, "--all")
-		default:
-			rc = addPlatformOverrides(rc, opt.Platform)
+		if err != nil {
+			return fmt.Errorf("error expanding tags: %v", err)
 		}
 
-		if err := runSkopeo(r.wrOut, r.wrOut, opt.Verbose, rc...); err != nil {
+		errs := false
+
+		// Syncing images based on the Tags
+		for _, t := range tags {
+
+			log.WithFields(
+				log.Fields{"tag": t, "platform": opt.Platform}).Info("syncing tag")
+
+			rc := append(cmd,
+				fmt.Sprintf("docker://%s:%s", opt.SrcRef, t),
+				fmt.Sprintf("docker://%s:%s", opt.TrgtRef, t))
+
+			switch opt.Platform {
+			case "":
+			case "all":
+				rc = append(rc, "--all")
+			default:
+				rc = addPlatformOverrides(rc, opt.Platform)
+			}
+
+			if err := runSkopeo(r.wrOut, r.wrOut, opt.Verbose, rc...); err != nil {
+				log.Error(err)
+				errs = true
+			}
+		}
+
+		if errs {
+			return fmt.Errorf("errors during sync with tags")
+		}
+	}
+
+	// Syncing Images based on the Digests.
+	// Warning: Skopeo Docker references with both a tag and digest are
+	// currently not supported.
+	//
+	// Example of a skopeo copy command with digest:
+	// $ skopeo copy --preserve-digests docker://docker.io/registry@sha256:cc6393207bf9d3e032c4d9277834c1695117532c9f7e8c64e7b7adcda3a85f39 docker-archive:./registry-linux-amd64-2.8.1.tar:docker.io/monproprechemin/registry:2.8.1
+	for _, dig := range opt.Digests.Digests {
+		// test if the image digest exists on the source registry
+		ret, err := digestExist(
+			dig,
+			opt.SrcRef,
+			srcCreds,
+			srcCertDir,
+			opt.SrcSkipTLSVerify)
+		// case: image digest exist
+		if ret == true && err == nil {
+			log.WithFields(
+				log.Fields{"digest": dig}).Info("syncing digest")
+
+			rc := append(cmd,
+				fmt.Sprintf("docker://%s@%s", opt.SrcRef, dig),
+				fmt.Sprintf("docker://%s", opt.TrgtRef))
+			log.Debug(rc)
+
+			if e := runSkopeo(r.wrOut, r.wrOut, opt.Verbose, rc...); e != nil {
+				log.Error(e)
+				return fmt.Errorf("errors during sync with digests")
+			}
+		} else {
 			log.Error(err)
-			errs = true
 		}
-	}
-
-	if errs {
-		return fmt.Errorf("errors during sync")
 	}
 
 	return nil

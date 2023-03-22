@@ -1,0 +1,97 @@
+# This file is for testing the behaviour of dregsy when the image digests are
+# not correctly formated. Dregsy ignores bad formated image digests.
+# Correct image digest format is: 
+# sha256:5e8e0509e829bb8f990249135a36e81a3ecbe94294e7a185cc14616e5fad96bd
+relay: skopeo
+
+lister:
+  maxItems: 50
+  cacheDuration: 30m
+
+tasks:
+- name: test-skopeo-digest-bad-formated-no-sha256-prefix
+  interval: 30
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: 127.0.0.1:5000
+    #auth: <your_token_here>
+    skip-tls-verify: true
+  mappings:
+  # Using either the WEB GUI at https://hub.docker.com/_/busybox/tags. Or using
+  # the tool crane* to get digests from CLI.
+  # *crane : https://github.com/google/go-containerregistry/tree/main/cmd/crane
+  #
+  # $ crane digest --platform="linux/amd64" library/busybox:1.29.2
+  # sha256:5e8e0509e829bb8f990249135a36e81a3ecbe94294e7a185cc14616e5fad96bd
+  #
+  # $ crane digest --platform="linux/arm/v6" library/busybox:1.29.2
+  # sha256:6ba3c395f0a2941114d8dcdf80bedcc7e654252f5870dd94daff9cc3188f3eb2
+  #
+  # $ crane digest --platform="linux/arm64" library/busybox:1.29.3
+  # sha256:76582bc9c59276ea11459bf5ff4f54fd5b7fd23ff622d80479156108fdd26470
+  - from: library/busybox
+    digests:
+    - 5e8e0509e829bb8f990249135a36e81a3ecbe94294e7a185cc14616e5fad96bd
+    to: skopeo/library/busybox
+
+- name: test-skopeo-digest-bad-formated-at
+  interval: 30
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: 127.0.0.1:5000
+    #auth: <your_token_here>
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    digests:
+    - sha256@76582bc9c59276ea11459bf5ff4f54fd5b7fd23ff622d80479156108fdd26470
+    to: skopeo/library/busybox
+
+- name: test-skopeo-digest-bad-formated-no-colon
+  interval: 30
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: 127.0.0.1:5000
+    #auth: <your_token_here>
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    digests:
+    - sha2566ba3c395f0a2941114d8dcdf80bedcc7e654252f5870dd94daff9cc3188f3eb2
+    to: skopeo/library/busybox
+
+- name: test-skopeo-digest-bad-formated-truncated1
+  interval: 30
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: 127.0.0.1:5000
+    #auth: <your_token_here>
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    digests:
+    - sha256:76582bc9c592
+    to: skopeo/library/busybox
+
+- name: test-skopeo-digest-bad-formated-truncated2
+  interval: 30
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+  target:
+    registry: 127.0.0.1:5000
+    #auth: <your_token_here>
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    digests:
+    - 76582bc9c592
+    to: skopeo/library/busybox

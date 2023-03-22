@@ -21,27 +21,31 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/xelalexv/dregsy/internal/pkg/digests"
 	"github.com/xelalexv/dregsy/internal/pkg/tags"
 	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
-//
 const RegexpPrefix = "regex:"
 
-//
+// Corresponds to a particular image source registry FQDN, image tags, image digests and destination registry FQDN
 type Mapping struct {
 	From     string   `yaml:"from"`
 	To       string   `yaml:"to"`
 	Tags     []string `yaml:"tags"`
 	Platform string   `yaml:"platform"`
+	Digests  []string `yaml:"digests"`
+	//TODO: PreserveDigests move to task?
+	PreserveDigests bool `yaml:"preserve-digests"`
 	//
 	fromFilter *regexp.Regexp
 	toFilter   *regexp.Regexp
 	toReplace  string
 	tagSet     *tags.TagSet
+	digestList *digests.DigestList
 }
 
-//
+// Validate the syntax and content of a mapping.
 func (m *Mapping) validate() error {
 
 	if m == nil {
@@ -86,10 +90,16 @@ func (m *Mapping) validate() error {
 		m.tagSet = tags
 	}
 
+	// Verify that the format of the image digests is corect.
+	if digests, err := digests.NewDigestList(m.Digests); err != nil {
+		return fmt.Errorf("'digests' uses invalid format: %v", err)
+	} else {
+		m.digestList = digests
+	}
+
 	return nil
 }
 
-//
 func (m *Mapping) filterRepos(repos []string) []string {
 
 	if m.isRegexpFrom() {
@@ -105,7 +115,6 @@ func (m *Mapping) filterRepos(repos []string) []string {
 	return repos
 }
 
-//
 func (m *Mapping) mapPath(p string) string {
 	if m.isRegexpTo() {
 		return m.toFilter.ReplaceAllString(p, m.toReplace)
@@ -119,22 +128,18 @@ func (m *Mapping) mapPath(p string) string {
 	return p
 }
 
-//
 func (m *Mapping) isRegexpFrom() bool {
 	return isRegexp(m.From)
 }
 
-//
 func (m *Mapping) isRegexpTo() bool {
 	return isRegexp(m.To)
 }
 
-//
 func isRegexp(expr string) bool {
 	return strings.HasPrefix(expr, RegexpPrefix)
 }
 
-//
 func normalizePath(p string) string {
 	if strings.HasPrefix(p, "/") {
 		return p
