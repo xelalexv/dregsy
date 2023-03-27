@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -45,13 +46,14 @@ func (s *Support) Platform(p string) error {
 
 //
 type SkopeoRelay struct {
-	wrOut io.Writer
+	wrOut  io.Writer
+	dryRun bool
 }
 
 //
-func NewSkopeoRelay(conf *RelayConfig, out io.Writer) *SkopeoRelay {
+func NewSkopeoRelay(conf *RelayConfig, out io.Writer, dry bool) *SkopeoRelay {
 
-	relay := &SkopeoRelay{}
+	relay := &SkopeoRelay{dryRun: dry}
 
 	if out != nil {
 		relay.wrOut = out
@@ -133,6 +135,45 @@ func (r *SkopeoRelay) Sync(opt *relays.SyncOptions) error {
 	}
 
 	errs := false
+
+	if r.dryRun {
+		desCertDir := ""
+		repo, _, _ := util.SplitRef(opt.TrgtRef)
+		if repo != "" {
+			desCertDir = CertsDirForRepo(repo)
+		}
+		trgtTags, err := ListAllTags(
+			opt.TrgtRef, destCreds, desCertDir, opt.TrgtSkipTLSVerify)
+
+		if err != nil {
+			// Not so sure parsing the error is the best solution but
+			// alt could be pre-check with an http request to `/v2/_catalog`
+			// and check if the repository is in the list
+			if strings.Contains(err.Error(), "registry 404 (Not Found)") {
+				log.Warnf("[dry-run] Target repository not found. setting the target list as empty list.")
+				trgtTags = []string{}
+			} else {
+				log.Errorf("[dry-run] unknon error trying to expand tags from target [%s]: %v", opt.TrgtRef, err)
+			}
+		}
+		// not yet dumping the information into a file, will do later
+		util.DumpMapAsJson(map[string]interface{}{
+			"task name":                                    opt.Task,
+			"task index":                                   opt.Index,
+			"source reference":                             opt.SrcRef,
+			"target reference":                             opt.TrgtRef,
+			"tags to sync from source":                     tags,
+			"amount of tags to be sync from source":        len(tags),
+			"tags available on target":                     trgtTags,
+			"tags available to be synced not synced yet":   util.DiffBetweenLists(tags, trgtTags),
+			"amount of tags available on target":           len(trgtTags),
+			"tags available on target that are not synced": util.DiffBetweenLists(trgtTags, tags),
+		}, fmt.Sprintf("dregsy-%s-%d-dry-run-report.json", opt.Task, opt.Index))
+
+		// stop here otherwise the amount of if/else would explode as every following action
+		// will need to be skip
+		return nil
+	}
 
 	for _, t := range tags {
 

@@ -23,6 +23,9 @@ import (
 //
 type SyncOptions struct {
 	//
+	Task  string
+	Index int
+	//
 	SrcRef           string
 	SrcAuth          string
 	SrcSkipTLSVerify bool

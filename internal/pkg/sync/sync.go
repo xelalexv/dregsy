@@ -43,10 +43,11 @@ type Sync struct {
 	relay    Relay
 	shutdown chan bool
 	ticks    chan bool
+	dryRun   bool
 }
 
 //
-func New(conf *SyncConfig) (*Sync, error) {
+func New(conf *SyncConfig, dryRun bool) (*Sync, error) {
 
 	sync := &Sync{}
 
@@ -58,13 +59,13 @@ func New(conf *SyncConfig) (*Sync, error) {
 	case docker.RelayID:
 		if err = conf.ValidateSupport(&docker.Support{}); err == nil {
 			relay, err = docker.NewDockerRelay(
-				conf.Docker, log.StandardLogger().WriterLevel(log.DebugLevel))
+				conf.Docker, log.StandardLogger().WriterLevel(log.DebugLevel), dryRun)
 		}
 
 	case skopeo.RelayID:
 		if err = conf.ValidateSupport(&skopeo.Support{}); err == nil {
 			relay = skopeo.NewSkopeoRelay(
-				conf.Skopeo, log.StandardLogger().WriterLevel(log.DebugLevel))
+				conf.Skopeo, log.StandardLogger().WriterLevel(log.DebugLevel), dryRun)
 		}
 
 	default:
@@ -78,6 +79,7 @@ func New(conf *SyncConfig) (*Sync, error) {
 	sync.relay = relay
 	sync.shutdown = make(chan bool)
 	sync.ticks = make(chan bool, 1)
+	sync.dryRun = dryRun
 
 	return sync, nil
 }
@@ -122,19 +124,19 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig, taskFilter string) error {
 		return err
 	}
 
-	// one-off tasks
+	// one-off tasks or dry-run
 	for _, t := range conf.Tasks {
-		if t.Interval == 0 && tf.Matches(t.Name) {
+		if s.dryRun || (t.Interval == 0 && tf.Matches(t.Name)) {
 			s.syncTask(t)
 		}
 	}
 
-	// periodic tasks
+	// periodic tasks when not dry-run
 	c := make(chan *Task)
 	ticking := false
 
 	for _, t := range conf.Tasks {
-		if t.Interval > 0 && tf.Matches(t.Name) {
+		if t.Interval > 0 && tf.Matches(t.Name) && !s.dryRun {
 			t.startTicking(c)
 			ticking = true
 		}
@@ -189,7 +191,7 @@ func (s *Sync) syncTask(t *Task) {
 		"target": t.Target.Registry}).Info("syncing task")
 	t.failed = false
 
-	for _, m := range t.Mappings {
+	for idx, m := range t.Mappings {
 
 		log.WithFields(log.Fields{"from": m.From, "to": m.To}).Info("mapping")
 
@@ -216,13 +218,17 @@ func (s *Sync) syncTask(t *Task) {
 			src := ref[0]
 			trgt := ref[1]
 
-			if err := t.ensureTargetExists(trgt); err != nil {
-				log.Error(err)
-				t.fail(true)
-				break
+			if !s.dryRun {
+				if err := t.ensureTargetExists(trgt); err != nil {
+					log.Error(err)
+					t.fail(true)
+					break
+				}
 			}
 
 			if err := s.relay.Sync(&relays.SyncOptions{
+				Task:              t.Name,
+				Index:             idx,
 				SrcRef:            src,
 				SrcAuth:           t.Source.GetAuth(),
 				SrcSkipTLSVerify:  t.Source.SkipTLSVerify,

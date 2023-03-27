@@ -52,12 +52,13 @@ func (s *Support) Platform(p string) error {
 //
 type DockerRelay struct {
 	client *dockerClient
+	dryRun bool
 }
 
 //
-func NewDockerRelay(conf *RelayConfig, out io.Writer) (*DockerRelay, error) {
+func NewDockerRelay(conf *RelayConfig, out io.Writer, dry bool) (*DockerRelay, error) {
 
-	relay := &DockerRelay{}
+	relay := &DockerRelay{dryRun: dry}
 
 	dockerHost := client.DefaultDockerHost
 	apiVersion := "1.41"
@@ -112,7 +113,7 @@ func (r *DockerRelay) Sync(opt *relays.SyncOptions) error {
 		return fmt.Errorf("'Platform: all' sync option not supported")
 	}
 
-	var tags []string
+	var tags, trgtTags []string
 	var err error
 
 	// When no tags are specified, a simple docker pull without a tag will get
@@ -132,6 +133,44 @@ func (r *DockerRelay) Sync(opt *relays.SyncOptions) error {
 		if err != nil {
 			return fmt.Errorf("error expanding tags: %v", err)
 		}
+	}
+
+	// obtain the tags for the target to calculate the diff (dry-run only)
+	if r.dryRun {
+		log.Debug("[dry-run] will not pull any image/tag because dry-run is enabled")
+
+		log.Tracef("[dry-run] obtained list of tags from source: %v", tags)
+		trgtCertDir := ""
+		repo, _, _ := util.SplitRef(opt.TrgtRef)
+		log.Debugf("[dry-run] obtaining tags from %s repository, determined from reference %s", repo, opt.TrgtRef)
+		if repo != "" {
+			trgtCertDir = skopeo.CertsDirForRepo(repo)
+		}
+		trgtTags, err = skopeo.ListAllTags(
+			opt.TrgtRef, util.DecodeJSONAuth(opt.TrgtAuth),
+			trgtCertDir, opt.TrgtSkipTLSVerify)
+
+		if err != nil {
+			return fmt.Errorf("[dry-run] error expanding tags from target [%s]: %v", opt.TrgtRef, err)
+		}
+		log.Tracef("[dry-run] obtained list of tags from target [%s]: %v", opt.TrgtRef, trgtTags)
+
+		util.DumpMapAsJson(map[string]interface{}{
+			"task name":                                    opt.Task,
+			"task index":                                   opt.Index,
+			"source reference":                             opt.SrcRef,
+			"target reference":                             opt.TrgtRef,
+			"tags to sync from source":                     tags,
+			"amount of tags to be sync from source":        len(tags),
+			"tags available on target":                     trgtTags,
+			"tags available to be synced not synced yet":   util.DiffBetweenLists(tags, trgtTags),
+			"amount of tags available on target":           len(trgtTags),
+			"tags available on target that are not synced": util.DiffBetweenLists(trgtTags, tags),
+		}, fmt.Sprintf("dregsy-%s-%d-dry-run-report.json", opt.Task, opt.Index))
+
+		// stop here otherwise the amount of if/else would explode as every following action
+		// will need to be skip
+		return nil
 	}
 
 	if len(tags) == 0 {
@@ -202,7 +241,8 @@ func (r *DockerRelay) pull(ref, platform, auth string, allTags, verbose bool) er
 	return r.client.pullImage(ref, allTags, platform, auth, verbose)
 }
 
-//
+// Function `list` only obtains the list of images and tags from
+// the local docker client, it does not fetch remote's images or tags
 func (r *DockerRelay) list(ref string) ([]*image, error) {
 	return r.client.listImages(ref)
 }
