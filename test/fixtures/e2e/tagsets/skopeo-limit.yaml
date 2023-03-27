@@ -1,0 +1,19 @@
+relay: skopeo
+
+tasks:
+- name: test-skopeo-limit
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+    auth: {{ .DockerhubAuth }}
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    to: tagsets-skopeo/limit/busybox
+    tags:
+    - 'glibc'
+    - 'semver: >=1.33.0 <=1.36.0'
+    - 'keep: latest 5'

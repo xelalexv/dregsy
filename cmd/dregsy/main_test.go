@@ -196,6 +196,18 @@ func TestE2EDockerTagSetsRegex(t *testing.T) {
 }
 
 //
+func TestE2EDockerTagSetsLimit(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/tagsets/docker-limit.yaml",
+		0, 0, true, map[string][]string{
+			"tagsets-docker/limit/busybox": {
+				"1.36", "1.36.0", "1.36.0-glibc", "1.36.0-musl",
+				"1.36.0-uclibc", "glibc",
+			},
+		},
+		test.GetParams())
+}
+
+//
 func TestE2ESkopeo(t *testing.T) {
 	tryConfig(test.NewTestHelper(t), "e2e/base/skopeo.yaml",
 		1, 0, true, nil, test.GetParams())
@@ -342,6 +354,18 @@ func TestE2ESkopeoTagSetsRegex(t *testing.T) {
 				"1.26.1-musl", "1.26.1-glibc", "1.26.1-uclibc",
 			},
 			"tagsets-skopeo/regexinv/busybox": {"1.26.1-uclibc"},
+		},
+		test.GetParams())
+}
+
+//
+func TestE2ESkopeoTagSetsLimit(t *testing.T) {
+	tryConfig(test.NewTestHelper(t), "e2e/tagsets/skopeo-limit.yaml",
+		0, 0, true, map[string][]string{
+			"tagsets-skopeo/limit/busybox": {
+				"1.36", "1.36.0", "1.36.0-glibc", "1.36.0-musl",
+				"1.36.0-uclibc", "glibc",
+			},
 		},
 		test.GetParams())
 }

@@ -90,12 +90,12 @@ tasks:
 When syncing via a *Docker* relay, do not use the same *Docker* daemon for building local images (even better: don't use it for anything else but syncing). There is a risk that the reference to a locally built image clashes with the shorthand notation for a reference to an image on `docker.io`. E.g. if you built a local image `busybox`, then this would be indistinguishable from the shorthand `busybox` pointing to `docker.io/library/busybox`. One way to avoid this is to use `registry.hub.docker.com` instead of `docker.io` in references, which would never get shortened. If you're not syncing from/to `docker.io`, then all of this is not a concern.
 
 
-### Image Matching <sup>*&#946; feature*</sup>
+### Image Matching
 
 The `mappings` section of a task can employ *Go* regular expressions for describing what images to sync, and how to change the destination path and name of an image. Details about how this works and examples can be found in this [design document](doc/design-image-matching.md). Also keep in mind that regular expressions can be surprising at times, so it would be a good idea to try them out first in a *Go* playground. You may otherwise potentially sync large numbers of images, clogging your target registry, or running into rate limits. Feedback about this feature is encouraged!
 
 
-### Tag Filtering <sup>*&#946; feature*</sup>
+### Tag Filtering
 
 The `tags` list of a task can use *semver* and regular expression filters, so you can do something like this:
 
@@ -115,7 +115,7 @@ Regex filters use standard *Go* regular expressions. When the first non-whitespa
 
 You can add multiple `semver:` and `regex:` filters under `tags`. Note however that the filters are simply ORed, i.e. a tag is synced if it satisfies at least one of the items under `tags`, be it semver, regex, or verbatim. So this is not a filter chain. Also, no sanity checks are done on the filters, so care must be taken to avoid competing or contradicting filters that select all or nothing at all.
 
-#### Tag Set Pruning <sup>*&#945; feature*</sup>
+#### Tag Set Pruning <sup>*&#946; feature*</sup>
 Additionally it is possible to *prune* the resulting tag set with one or more `keep:` filters. These are regular expressions, identical to `regex:` filters (including inversion), but they get applied last, independent of where in the list they appear. If a tag in the filtered tag set does not match **all** of the `keep:` filters, it is removed from the set. This helps in defining tag filters that would be hard to describe with only *semver* and regular expressions. Here's an example for a source registry that attaches OS suffixes to their version tags, such as `2.1.4-buster`:
 
 ```yaml
@@ -124,10 +124,32 @@ tags:
   - 'keep: .+-(alpine|buster)'
 ```
 
-This will select all releases starting with version `2.0.0`, but only for the `-alpine` and `-buster` suffixes.
+This selects all releases starting with version `2.0.0`, but only for the `-alpine` and `-buster` suffixes.
 
+**Limiting the Tag Count** <sup>*&#945; feature*</sup>
 
-### Platform Selection (*Multi-Platform* Source Images) <sup>*&#945; feature*</sup>
+A special `keep:` directive is `keep: latest n`. This limits the set of tags to the latest *n* tags, and is enforced at the very end of tag set pruning, i.e. on the already pruned tag set. The latest tags are determined by sorting the tags as *semvers* in descending order and picking the first *n*. Any tags that are not legal *semvers* are kept, so the reduced set may actually contain more than *n* items. This allows to include certain verbatim tags such as `testing` or `qa` in addition to the latest *n* releases. However, if there are no legal *semver* tags in the set at all, the first *n* tags based on a descending string sort are picked.
+
+Here is an example:
+
+```yaml
+tags:
+  - 'glibc-tests'
+  - 'semver: >=1.34.0 <=1.36.0'
+  - 'keep: latest 5'
+```
+
+This selects all releases from version `1.34.0` through `1.36.0`, but limits them to the latest 5. The verbatim tag `glibc-tests` is always included.
+
+Keep the following in mind when using tag count limits:
+
+- Since for repositories using both *semver* and non-*semver* tags, the latter ones are always kept, use appropriate tag & pruning filters if there are many non-*semver* tags. This avoids overly large result sets, which could otherwise render tag count limiting useless.
+
+- For repositories with no *semver* tags, tag count limiting may not be suitable depending on what kind of tags are present. When sorted in string order, the tags need to represent their temporal order. Where for example arbitrary code names are used, this will not work.
+
+- If several `keep: latest` directives are specified in a `tags` list, the last one is used. 
+
+### Platform Selection (*Multi-Platform* Source Images) <sup>*&#946; feature*</sup>
 
 When the source image is a *multi-platform* image, the platform image adequate for the system on which *dregsy* runs is synced by default. Where this is not applicable, the desired platform can be specified via the `platform` setting, separately for each mapping. To sync all available platform images, `platform: all` can be used. Note however that this shorthand is only supported by the *Skopeo* relay.
 
@@ -157,9 +179,9 @@ When using the `skopeo` relay, this is essentially the same, except that you spe
 - To skip TLS verification for a particular repo server when using the `docker` relay, you need to [configure the *Docker* daemon accordingly](https://docs.docker.com/registry/insecure/). With `skopeo`, you can easily set this in any source or target definition with the `skip-tls-verify` setting.
 
 
-### *AWS ECR*
+### *AWS ECR* (private & public)
 
-If a source or target is an *AWS ECR* registry, you need to retrieve the `auth` credentials via *AWS CLI*. They would however only be good for 12 hours, which is ok for one off tasks. For periodic tasks, or to avoid retrieving the credentials manually, you can specify an `auth-refresh` interval as a *Go* `Duration`, e.g. `10h`. If set, *dregsy* will initially and whenever the refresh interval has expired retrieve new access credentials. `auth` can be omitted when `auth-refresh` is set. Setting `auth-refresh` for anything other than an *AWS ECR* registry will raise an error.
+If a source (private registry only) or target (private & public) is an *AWS ECR* registry, you need to retrieve the `auth` credentials via *AWS CLI*. They would however only be good for 12 hours, which is ok for one off tasks. For periodic tasks, or to avoid retrieving the credentials manually, you can specify an `auth-refresh` interval as a *Go* `Duration`, e.g. `10h`. If set, *dregsy* will initially and whenever the refresh interval has expired retrieve new access credentials. `auth` can be omitted when `auth-refresh` is set. Setting `auth-refresh` for anything other than an *AWS ECR* registry will raise an error.
 
 Note however that you either need to set environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for the *AWS* account you want to use and a user with sufficient permissions. Or if you're running *dregsy* on an *EC2* instance in your *AWS* account, the machine should have an appropriate instance profile. An according policy could look like this:
 

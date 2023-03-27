@@ -19,6 +19,7 @@ package tags
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/blang/semver/v4"
@@ -33,6 +34,18 @@ const RegexpPrefix = "regex:"
 const KeepPrefix = "keep:"
 
 //
+var keepCount *util.Regex
+
+//
+func init() {
+	var err error
+	if keepCount, err = util.NewRegex(
+		"keep:[[:space:]]+latest[[:space:]]+[[:digit:]]+"); err != nil {
+		panic(fmt.Sprintf("invalid regex for keep latest: %v", err))
+	}
+}
+
+//
 func NewTagSet(tags []string) (*TagSet, error) {
 	ret := &TagSet{}
 	if err := ret.add(tags); err != nil {
@@ -43,31 +56,47 @@ func NewTagSet(tags []string) (*TagSet, error) {
 
 //
 type TagSet struct {
-	verbatim []string
-	semver   []semver.Range
-	regex    []*util.Regex
-	keep     []*util.Regex
+	verbatim  []string
+	semver    []semver.Range
+	regex     []*util.Regex
+	keep      []*util.Regex
+	keepCount int
 }
 
 //
 func (ts *TagSet) add(tags []string) error {
+
 	for _, t := range tags {
-		if isSemver(t) {
+
+		t = strings.TrimSpace(t)
+
+		switch {
+
+		case isSemver(t):
 			if err := ts.addSemver(t); err != nil {
 				return err
 			}
-		} else if isRegex(t) {
+
+		case isRegex(t):
 			if err := ts.addRegex(t); err != nil {
 				return err
 			}
-		} else if isKeep(t) {
+
+		case isKeepCount(t):
+			if err := ts.setKeepCount(t); err != nil {
+				return err
+			}
+
+		case isKeep(t):
 			if err := ts.addKeep(t); err != nil {
 				return err
 			}
-		} else {
+
+		default:
 			ts.addVerbatim(t)
 		}
 	}
+
 	return nil
 }
 
@@ -93,8 +122,18 @@ func (ts *TagSet) addRegex(r string) (err error) {
 }
 
 //
-func (ts *TagSet) addKeep(r string) (err error) {
-	ts.keep, err = ts.addFilter(r, KeepPrefix, ts.keep)
+func (ts *TagSet) setKeepCount(c string) (err error) {
+	if p := strings.Split(c, " "); len(p) > 1 {
+		ts.keepCount, err = strconv.Atoi(p[len(p)-1])
+	} else {
+		err = fmt.Errorf("invalid keep count: %s", c)
+	}
+	return
+}
+
+//
+func (ts *TagSet) addKeep(k string) (err error) {
+	ts.keep, err = ts.addFilter(k, KeepPrefix, ts.keep)
 	return
 }
 
@@ -181,7 +220,13 @@ func (ts *TagSet) Expand(lister func() ([]string, error)) ([]string, error) {
 
 	log.Debugf("pruned tags: %v", pruned)
 
-	sort.Strings(ret)
+	if ts.keepCount > 0 {
+		log.WithField("limit", ts.keepCount).Debug("reducing tag set")
+		ret = ts.reduce(ret, ts.keepCount)
+	} else {
+		sort.Strings(ret)
+	}
+
 	log.Debugf("expanded tags: %v", ret)
 
 	return ret, nil
@@ -190,23 +235,22 @@ func (ts *TagSet) Expand(lister func() ([]string, error)) ([]string, error) {
 //
 func (ts *TagSet) expandSemver(tags []string) []string {
 
-	var vers semver.Versions
-	var used []string
+	vers := make(versions, 0, len(tags))
 
 	for _, t := range tags {
 		if v, err := semver.ParseTolerant(t); err != nil {
-			log.Debugf("skipping tag '%s', not a valid semver: %v", t, err)
+			log.WithField("tag", t).Debugf(
+				"skipping tag, not a valid semver: %v", err)
 		} else {
-			vers = append(vers, v)
-			used = append(used, t)
+			vers = append(vers, &version{Version: v, tag: t})
 		}
 	}
 
 	var ret []string
-	for ix, v := range vers {
+	for _, v := range vers {
 		for _, r := range ts.semver {
-			if r(v) {
-				ret = append(ret, used[ix])
+			if r(v.Version) {
+				ret = append(ret, v.tag)
 				break
 			}
 		}
@@ -214,6 +258,48 @@ func (ts *TagSet) expandSemver(tags []string) []string {
 
 	log.Debugf("tags expanded from semver: %v", ret)
 	return ret
+}
+
+//
+func (ts *TagSet) reduce(tags []string, limit int) []string {
+
+	vers := make(versions, 0, len(tags))
+
+	// reorg tags list to contain all non-semver tags on the left, all semvers
+	// on the right, which will then start at `pivot`
+	pivot := 0
+	for ix, t := range tags {
+		if v, err := semver.ParseTolerant(t); err != nil {
+			if ix != pivot {
+				tags[pivot], tags[ix] = tags[ix], tags[pivot]
+			}
+			pivot++
+		} else {
+			vers = append(vers, &version{Version: v, tag: t})
+		}
+	}
+
+	if len(vers) > 0 { // if there are semvers, we apply the limit only to those
+		if end := pivot + limit; end < len(tags) {
+			// there are more semvers than limit, need to reduce
+			vers.sort() // descending, semver
+			for ix, v := range vers {
+				tags[pivot+ix] = v.tag
+			}
+			log.Debugf("removed tags: %v", tags[end:])
+			tags = tags[:end]
+		}
+		sort.Strings(tags) // ascending, string
+
+	} else { // otherwise the limit applies to the whole set
+		sort.Strings(tags) // ascending, string
+		if start := len(tags) - limit; start > 0 {
+			log.Debugf("removed tags: %v", tags[:start])
+			tags = tags[start:]
+		}
+	}
+
+	return tags
 }
 
 //
@@ -263,4 +349,9 @@ func isRegex(tag string) bool {
 //
 func isKeep(tag string) bool {
 	return strings.HasPrefix(tag, KeepPrefix)
+}
+
+//
+func isKeepCount(tag string) bool {
+	return keepCount.Matches(tag)
 }

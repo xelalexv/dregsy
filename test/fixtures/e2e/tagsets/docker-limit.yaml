@@ -1,0 +1,23 @@
+relay: docker
+
+docker:
+  dockerhost: {{ .DockerHost }}
+
+tasks:
+- name: test-docker-limit
+  verbose: true
+  source:
+    registry: registry.hub.docker.com
+    auth: {{ .DockerhubAuth }}
+  target:
+    registry: 127.0.0.1:5000
+    auth: {{ .LocalAuth }}
+    # not actually supported for Docker relay, but need this for validation
+    skip-tls-verify: true
+  mappings:
+  - from: library/busybox
+    to: tagsets-docker/limit/busybox
+    tags:
+    - 'glibc'
+    - 'semver: >=1.33.0 <=1.36.0'
+    - 'keep: latest 5'
