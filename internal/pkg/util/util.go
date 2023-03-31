@@ -17,9 +17,12 @@
 package util
 
 import (
+	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -97,4 +100,38 @@ func DecodeJSONAuth(authBase64 string) string {
 	}
 
 	return fmt.Sprintf("%s:%s", ret.Username, ret.Password)
+}
+
+//
+func ComputeSHA1(file string) ([]byte, error) {
+
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+
+	hash := sha1.New()
+	if _, err = io.Copy(hash, f); err != nil {
+		return nil, err
+	}
+	if err = f.Close(); err != nil {
+		return nil, err
+	}
+
+	return hash.Sum(nil), nil
+}
+
+//
+func CompareSHA1(a, b []byte) bool {
+
+	if len(a) != len(b) {
+		return false
+	}
+
+	for ix, va := range a {
+		if va != b[ix] {
+			return false
+		}
+	}
+	return true
 }

@@ -100,9 +100,26 @@ func main() {
 		exit(1)
 	}
 
+	var err error
+	for restart := true; restart; {
+		if restart, err = run(*configFile, *taskFilter); restart {
+			log.Infoln()
+			log.Info("restarting ...")
+			log.Infoln()
+		}
+	}
+
+	log.Debug("exit main")
+	failOnError(err)
+	exit(0)
+}
+
+//
+func run(configFile, taskFilter string) (bool, error) {
+
 	version()
 
-	conf, err := sync.LoadConfig(*configFile)
+	conf, err := sync.LoadConfig(configFile)
 	failOnError(err)
 
 	s, err := sync.New(conf)
@@ -112,12 +129,9 @@ func main() {
 		testSync <- s
 	}
 
-	err = s.SyncFromConfig(conf, *taskFilter)
+	restart, err := s.SyncFromConfig(conf, taskFilter)
 	s.Dispose()
-
-	log.Debug("exit main")
-	failOnError(err)
-	exit(0)
+	return restart, err
 }
 
 //

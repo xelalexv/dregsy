@@ -11,6 +11,9 @@ Sync tasks are defined in a YAML config file:
 # relay type, either 'skopeo' or 'docker'
 relay: skopeo
 
+# whether to watch this config file and restart on change, defaults to false
+watch: true
+
 # relay config sections
 skopeo:
   # path to the skopeo binary; defaults to 'skopeo', in which case it needs to
@@ -88,6 +91,14 @@ tasks:
 ### Caveats
 
 When syncing via a *Docker* relay, do not use the same *Docker* daemon for building local images (even better: don't use it for anything else but syncing). There is a risk that the reference to a locally built image clashes with the shorthand notation for a reference to an image on `docker.io`. E.g. if you built a local image `busybox`, then this would be indistinguishable from the shorthand `busybox` pointing to `docker.io/library/busybox`. One way to avoid this is to use `registry.hub.docker.com` instead of `docker.io` in references, which would never get shortened. If you're not syncing from/to `docker.io`, then all of this is not a concern.
+
+
+### Config File Watch & Restart <sup>*&#945; feature*</sup>
+
+By setting `watch: true`, you can make *dregsy* watch the config file. If it changes, *dregsy* will restart. If there is a task currently being synced, *dregsy* waits for it to complete. The restart is a full restart, so if your config contains one-off tasks, they will be run. If *dregsy* was started with a task filter via the `run` option, this filter stays active. If the new config causes any validation errors, *dregsy* will stop. Note that the config file watch does not work if the file resides on an *NFS*, *SMB*, or *FUSE* file system (see the [fsnotify](https://github.com/fsnotify/fsnotify) package).
+
+#### Triggering Restart with `SIGHUP`
+You can also trigger a restart by sending `SIGHUP` to the *dregsy* process. This can be useful if you want more control over when a restart should occur, or you cannot use config file watch. The restart behavior is the same as outlined above for config file watch.
 
 
 ### Image Matching

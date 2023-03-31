@@ -7,6 +7,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/docker/distribution v2.8.0+incompatible
 	github.com/docker/docker v20.10.22+incompatible
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/google/go-containerregistry v0.2.1
 	github.com/sirupsen/logrus v1.8.1

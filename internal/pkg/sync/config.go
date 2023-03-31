@@ -19,15 +19,18 @@ package sync
 import (
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"time"
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/xelalexv/dregsy/internal/pkg/relays"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/docker"
 	"github.com/xelalexv/dregsy/internal/pkg/relays/skopeo"
+	"github.com/xelalexv/dregsy/internal/pkg/util"
 )
 
 //
@@ -43,6 +46,10 @@ type SyncConfig struct {
 	APIVersion string              `yaml:"api-version"` // DEPRECATED
 	Lister     *ListerConfig       `yaml:"lister"`
 	Tasks      []*Task             `yaml:"tasks"`
+	Watch      *bool               `yaml:"watch,omitempty"`
+	//
+	source string
+	sha1   []byte
 }
 
 //
@@ -61,6 +68,15 @@ func (c *SyncConfig) ValidateSupport(s relays.Support) error {
 
 //
 func (c *SyncConfig) validate() error {
+
+	if c.Watch == nil {
+		log.Info(`
+
+Note: Automatic restart after config file change is currently off by default. You can activate
+      this by adding 'watch: true' to your config. The default will change to on in the future.
+
+`)
+	}
 
 	if c.Relay == "" {
 		c.Relay = docker.RelayID
@@ -134,6 +150,95 @@ func (c *SyncConfig) validate() error {
 }
 
 //
+func (c *SyncConfig) watch() (*fsnotify.Watcher, error) {
+
+	watch, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+
+	if c.Watch == nil || !*c.Watch {
+		log.Info("not watching config file")
+		return watch, nil
+	}
+
+	// resolve any links
+	if c.source, err = filepath.EvalSymlinks(c.source); err != nil {
+		return nil, err
+	}
+
+	// make absolute
+	if c.source, err = filepath.Abs(c.source); err != nil {
+		return nil, err
+	}
+
+	if err = watch.Add(c.source); err != nil { // watch config file
+		return nil, err
+	}
+
+	// In addition to the config file itself, we also watch the parent dir.
+	// This is more robust. The file may be changed by replacing it, rather
+	// than writing to it, which cannot be handled by the watch on the file.
+	if err = watch.Add(filepath.Dir(c.source)); err != nil {
+		return nil, err
+	}
+
+	// compute starting SHA1 digest of config file for later comparisons
+	if c.sha1, err = util.ComputeSHA1(c.source); err != nil {
+		return nil, err
+	}
+
+	log.WithField("file", c.source).Info(
+		"watching config file, restarting on change")
+	return watch, nil
+}
+
+//
+func (c *SyncConfig) isChanged(evt fsnotify.Event) bool {
+
+	log.WithFields(
+		log.Fields{"op": evt.Op, "name": evt.Name}).Trace("file watch event")
+
+	// event neither concerns the config file, nor its parent
+	if evt.Name != c.source && evt.Name != filepath.Dir(c.source) {
+		return false
+	}
+
+	log.WithField("op", evt.Op).Debug("config file event")
+
+	// Removal of the parent dir is an indication for change: on Kubernetes,
+	// config maps mounted into pods are updated by creating a new parent dir
+	// and mounting new config map content into it. If the config file itself
+	// was removed, we also see that as an indication for content change.
+	if evt.Has(fsnotify.Remove) {
+		if evt.Name == c.source {
+			log.Debug("config file removed, assuming change")
+		} else {
+			log.Debug("config file parent directory removed, assuming change")
+		}
+
+	} else if evt.Has(fsnotify.Chmod) {
+		// In case of a CHMOD event for the config file itself, we calculate
+		// the SHA1 digest and compare with initial one to check for change.
+		if evt.Name == c.source {
+			d, err := util.ComputeSHA1(c.source)
+			if err != nil || util.CompareSHA1(c.sha1, d) {
+				log.Debug("no content change")
+				return false
+			}
+			log.Debug("changed content")
+		} else {
+			return false // CHMOD on parent not relevant
+		}
+
+	} else {
+		log.Debug("config file changed") // all other events mean change
+	}
+
+	return true
+}
+
+//
 func LoadConfig(file string) (*SyncConfig, error) {
 
 	data, err := ioutil.ReadFile(file)
@@ -142,7 +247,7 @@ func LoadConfig(file string) (*SyncConfig, error) {
 		return nil, fmt.Errorf("error loading config file '%s': %v", file, err)
 	}
 
-	config := &SyncConfig{}
+	config := &SyncConfig{source: file}
 
 	if err = yaml.Unmarshal(data, config); err != nil {
 		return nil, fmt.Errorf("error parsing config file '%s': %v", file, err)

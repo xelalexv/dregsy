@@ -107,7 +107,7 @@ func (s *Sync) Dispose() {
 }
 
 //
-func (s *Sync) SyncFromConfig(conf *SyncConfig, taskFilter string) error {
+func (s *Sync) SyncFromConfig(conf *SyncConfig, taskFilter string) (bool, error) {
 
 	if taskFilter == "" {
 		taskFilter = ".*"
@@ -115,24 +115,32 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig, taskFilter string) error {
 
 	tf, err := util.NewRegex(taskFilter)
 	if err != nil {
-		return fmt.Errorf("invalid task filter: %v", err)
+		return false, fmt.Errorf("invalid task filter: %v", err)
 	}
 
 	if err := s.relay.Prepare(); err != nil {
-		return err
+		return false, err
 	}
 
-	// one-off tasks
-	for _, t := range conf.Tasks {
+	// if the config file should not be watched, we receive an empty watcher
+	// that will never produce any file events, but can still be used in the
+	// main loop below
+	watch, err := conf.watch()
+	if err != nil {
+		return false, err
+	}
+	defer watch.Close()
+
+	restart := false
+
+	for _, t := range conf.Tasks { // one-off tasks
 		if t.Interval == 0 && tf.Matches(t.Name) {
 			s.syncTask(t)
 		}
 	}
 
-	// periodic tasks
-	c := make(chan *Task)
+	c := make(chan *Task) // periodic tasks
 	ticking := false
-
 	for _, t := range conf.Tasks {
 		if t.Interval > 0 && tf.Matches(t.Name) {
 			t.startTicking(c)
@@ -140,18 +148,59 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig, taskFilter string) error {
 		}
 	}
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	sigs := make(chan os.Signal, 1) // watch for signals
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	for ticking {
-		log.Info("waiting for next sync task...")
+	// rewrite of config file may result in many separate write events, we need
+	// to use a timer to wait for a certain back off time until restarting; we
+	// set up an initial, expired instance
+	tChange := time.NewTimer(time.Millisecond)
+	<-tChange.C
+
+	var msg string
+
+	for ticking { // main sync loop
+
+		if msg != "" {
+			log.Info(msg)
+		}
+
 		select {
+
 		case t := <-c: // actual task
 			s.syncTask(t)
 			s.tick() // send a tick
-		case sig := <-sigs: // interrupt signal
-			log.WithField("signal", sig).Info("received signal, stopping ...")
+			msg = "waiting for next sync task..."
+
+		case sig := <-sigs: // signal
+			log.WithField("signal", sig).Info("received signal")
+			if sig == syscall.SIGHUP {
+				log.Info("restarting ...")
+				restart = true
+			} else {
+				log.Info("stopping ...")
+			}
 			ticking = false
+
+		case evt, ok := <-watch.Events:
+			msg = ""
+			if ok && conf.isChanged(evt) {
+				tChange.Stop()
+				tChange = time.NewTimer(5 * time.Second)
+			}
+
+		case err, ok := <-watch.Errors: // config file watch errors
+			tChange.Stop()
+			msg = ""
+			if ok {
+				log.Warnf("error watching config file: %v", err)
+			}
+
+		case <-tChange.C: // back off time after last change expired, restart
+			log.Info("config file changed, restarting ...")
+			ticking = false
+			restart = true
+
 		case <-s.shutdown: // shutdown flagged
 			log.Info("shutdown flagged, stopping ...")
 			ticking = false
@@ -167,12 +216,12 @@ func (s *Sync) SyncFromConfig(conf *SyncConfig, taskFilter string) error {
 	}
 
 	if errs {
-		return fmt.Errorf(
+		return restart, fmt.Errorf(
 			"one or more tasks had errors, please see log for details")
 	}
 
 	log.Info("all done")
-	return nil
+	return restart, nil
 }
 
 //
