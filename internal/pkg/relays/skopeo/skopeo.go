@@ -49,7 +49,7 @@ type tagList struct {
 }
 
 //
-func CertsDirForRepo(r string) string {
+func CertsDirForRegistry(r string) string {
 	return fmt.Sprintf("%s/%s", certsBaseDir, withoutPort(r))
 }
 
@@ -176,10 +176,10 @@ func decodeTagList(tl []byte) (*tagList, error) {
 }
 
 //
-func withoutPort(repo string) string {
-	ix := strings.Index(repo, ":")
+func withoutPort(registry string) string {
+	ix := strings.Index(registry, ":")
 	if ix == -1 {
-		return repo
+		return registry
 	}
-	return repo[:ix]
+	return registry[:ix]
 }

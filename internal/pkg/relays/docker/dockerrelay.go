@@ -120,9 +120,9 @@ func (r *DockerRelay) Sync(opt *relays.SyncOptions) error {
 
 	if !opt.Tags.IsEmpty() {
 		var certs string
-		repo, _, _ := util.SplitRef(opt.SrcRef)
-		if repo != "" {
-			certs = skopeo.CertsDirForRepo(repo)
+		reg, _, _ := util.SplitRef(opt.SrcRef)
+		if reg != "" {
+			certs = skopeo.CertsDirForRegistry(reg)
 		}
 		tags, err = opt.Tags.Expand(func() ([]string, error) {
 			return skopeo.ListAllTags(

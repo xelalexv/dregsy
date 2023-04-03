@@ -106,15 +106,15 @@ func (r *SkopeoRelay) Sync(opt *relays.SyncOptions) error {
 	}
 
 	srcCertDir := ""
-	repo, _, _ := util.SplitRef(opt.SrcRef)
-	if repo != "" {
-		srcCertDir = CertsDirForRepo(repo)
+	reg, _, _ := util.SplitRef(opt.SrcRef)
+	if reg != "" {
+		srcCertDir = CertsDirForRegistry(reg)
 		cmd = append(cmd, fmt.Sprintf("--src-cert-dir=%s", srcCertDir))
 	}
-	repo, _, _ = util.SplitRef(opt.TrgtRef)
-	if repo != "" {
+	reg, _, _ = util.SplitRef(opt.TrgtRef)
+	if reg != "" {
 		cmd = append(cmd, fmt.Sprintf(
-			"--dest-cert-dir=%s/%s", certsBaseDir, withoutPort(repo)))
+			"--dest-cert-dir=%s/%s", certsBaseDir, withoutPort(reg)))
 	}
 
 	if srcCreds != "" {

@@ -131,8 +131,8 @@ func (e *ecr) getService() (*awsecr.ECR, error) {
 //
 func CreateECRTarget(ref, region, account string, public bool) error {
 
-	_, path, _ := util.SplitRef(ref)
-	if len(path) == 0 {
+	_, repo, _ := util.SplitRef(ref)
+	if len(repo) == 0 {
 		return nil
 	}
 
@@ -142,29 +142,29 @@ func CreateECRTarget(ref, region, account string, public bool) error {
 	}
 
 	if public {
-		return createECRPubTarget(sess, ref, path, region, account)
+		return createECRPubTarget(sess, ref, repo, region, account)
 	} else {
-		return createECRTarget(sess, ref, path, region, account)
+		return createECRTarget(sess, ref, repo, region, account)
 	}
 }
 
 //
-func createECRPubTarget(sess *session.Session, ref, path, region, account string) error {
+func createECRPubTarget(sess *session.Session, ref, repo, region, account string) error {
 
 	svc := awsecrpub.New(sess, &aws.Config{
 		Region: aws.String(region),
 	})
 
-	repo := path
-	if p := strings.SplitN(path, "/", 2); len(p) > 1 {
-		repo = p[1]
+	rp := repo
+	if p := strings.SplitN(repo, "/", 2); len(p) > 1 {
+		rp = p[1]
 	}
 
-	log.Debugf("path: %s, repo: %s", path, repo)
+	log.WithFields(log.Fields{"long": repo, "short": rp}).Debug("repo")
 
 	inpDescr := &awsecrpub.DescribeRepositoriesInput{
 		RegistryId:      aws.String(account),
-		RepositoryNames: []*string{aws.String(repo)},
+		RepositoryNames: []*string{aws.String(rp)},
 	}
 
 	out, err := svc.DescribeRepositories(inpDescr)
@@ -185,7 +185,7 @@ func createECRPubTarget(sess *session.Session, ref, path, region, account string
 
 	log.WithField("ref", ref).Info("creating ECR public target")
 	inpCrea := &awsecrpub.CreateRepositoryInput{
-		RepositoryName: aws.String(repo),
+		RepositoryName: aws.String(rp),
 	}
 
 	_, err = svc.CreateRepository(inpCrea)
@@ -193,7 +193,7 @@ func createECRPubTarget(sess *session.Session, ref, path, region, account string
 }
 
 //
-func createECRTarget(sess *session.Session, ref, path, region, account string) error {
+func createECRTarget(sess *session.Session, ref, repo, region, account string) error {
 
 	svc := awsecr.New(sess, &aws.Config{
 		Region: aws.String(region),
@@ -201,7 +201,7 @@ func createECRTarget(sess *session.Session, ref, path, region, account string) e
 
 	inpDescr := &awsecr.DescribeRepositoriesInput{
 		RegistryId:      aws.String(account),
-		RepositoryNames: []*string{aws.String(path)},
+		RepositoryNames: []*string{aws.String(repo)},
 	}
 
 	out, err := svc.DescribeRepositories(inpDescr)
@@ -222,7 +222,7 @@ func createECRTarget(sess *session.Session, ref, path, region, account string) e
 
 	log.WithField("ref", ref).Info("creating ECR target")
 	inpCrea := &awsecr.CreateRepositoryInput{
-		RepositoryName: aws.String(path),
+		RepositoryName: aws.String(repo),
 	}
 
 	_, err = svc.CreateRepository(inpCrea)
