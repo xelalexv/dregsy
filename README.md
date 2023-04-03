@@ -1,7 +1,7 @@
-# *dregsy* - Docker Registry Sync
+# *dregsy* - Container Registry Sync
 
 ## Synopsis
-*dregsy* lets you sync *Docker* images between registries, public or private. Several sync tasks can be defined, as one-off or periodic tasks (see *Configuration* section). An image is synced by using a *sync relay*. Currently, this can be either [*Skopeo*](https://github.com/containers/skopeo) or a local *Docker* daemon. When using the latter, the image is first pulled from the source, then tagged for the destination, and finally pushed there. *Skopeo* in contrast, can directly transfer an image from source to destination, which makes it the preferred choice.
+*dregsy* lets you sync container images between registries, public or private. Several sync tasks can be defined, as one-off or periodic tasks (see *Configuration* section). An image is synced by using a *sync relay*. Currently, this can be either [*Skopeo*](https://github.com/containers/skopeo) or a local *Docker* daemon. When using the latter, the image is first pulled from the source, then tagged for the destination, and finally pushed there. *Skopeo* in contrast, can directly transfer an image from source to destination, which makes it the preferred choice.
 
 
 ## Configuration
@@ -196,7 +196,7 @@ To sync a selection of platform images from the same multi-platform source image
 
 ### Repository Validation & Client Authentication with TLS
 
-When connecting to source and target repository servers, TLS validation is performed to verify the identity of a server. If you're using self-signed certificates for a repo server, or a server's certificate cannot be validated with the CA bundle available on your system, you need to provide the required CA certs. The *dregsy* *Docker* image includes the CA bundle that comes with the *Alpine* base image. Also, if a repo server requires client authentication, i.e. mutual TLS, you need to provide an appropriate client key & cert pair.
+When connecting to source and target repository servers, TLS validation is performed to verify the identity of a server. If you're using self-signed certificates for a repo server, or a server's certificate cannot be validated with the CA bundle available on your system, you need to provide the required CA certs. The *dregsy* container image includes the CA bundle that comes with the *Alpine* base image. Also, if a repo server requires client authentication, i.e. mutual TLS, you need to provide an appropriate client key & cert pair.
 
 How you do that for *Docker* is [described here](https://docs.docker.com/engine/security/certificates/). The short version: create a folder under `/etc/docker/certs.d` with the same name as the repo server's host name, e.g. `source-registry.acme.com`, and place any required CA certs there as `*.crt` (mind the extension). Client key & cert pairs go there as well, as `*.key` and `*.cert`.
 
@@ -319,7 +319,7 @@ Logging behavior can be changed with these environment variables:
 ### Running Natively
 If you run *dregsy* natively on your system, with relay type `docker`, the *Docker* daemon of your system will be used as the relay for all sync tasks, so all synced images will wind up in the *Docker* storage of that daemon.
 
-### Running Inside a *Docker* Container
+### Running Inside a Container
 You can use the [*dregsy* image on Dockerhub](https://hub.docker.com/r/xelalex/dregsy/) for running *dregsy* containerized. There are two variants: one is based on *Alpine*, and suitable when you just want to run *dregsy*. The other variant is based on *Ubuntu*. It's somewhat larger, but may be better suited as a base when you want to extend the *dregsy* image. It's often easier to add things there than on *Alpine*, e.g. the *AWS* command line interface.
 
 With each release, three tags get published: `{version}-ubuntu`, `{version}-alpine`, and `{version}`, with the latter two referring to the same image. The same applies for `latest`. The *Skopeo* versions contained in the two variants may not always be exactly the same, but should only differ in patch level.
@@ -340,7 +340,7 @@ docker run --privileged --rm -v {path to config file}:/config.yaml -v /var/run/d
 
 ### Running On *Kubernetes*
 
-When you run a *Docker* registry inside your *Kubernetes* cluster as an image cache, *dregsy* can come in handy as an automated updater for that cache. The example config below uses the `skopeo` relay:
+When you run a container registry inside your *Kubernetes* cluster as an image cache, *dregsy* can come in handy as an automated updater for that cache. The example config below uses the `skopeo` relay:
 
 ```yaml
 relay: skopeo
@@ -408,7 +408,7 @@ spec:
 
 ### Building
 
-The `Makefile` has targets for building the binary and *Docker* image, and other stuff. Just run `make` to get a list of the targets, and info about configuration items. Note that for consistency, building is done inside a *Golang* build container, so you will need *Docker* to build. *dregsy*'s *Docker* image is based on *Alpine*, and installs *Skopeo* via `apk` during the image build.
+The `Makefile` has targets for building the binary and container image, and other stuff. Just run `make` to get a list of the targets, and info about configuration items. Note that for consistency, building is done inside a *Golang* build container, so you will need *Docker* to build. *dregsy*'s *Docker* image is based on *Alpine*, and installs *Skopeo* via `apk` during the image build.
 
 ### Testing
 

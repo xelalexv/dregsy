@@ -1,5 +1,13 @@
 # Changelog
 
+## `master`
+- changed behavior: tag pruning no longer removes verbatim tags
+- allow digests in tags (issue #86)
+- support latest count limit for tag sets (issue #96)
+- support public *ECR* repos (issue #60)
+- use provided credentials with *GCR* (PR #92)
+- restart on config file change and receiving `SIGHUP` (issue #98)
+
 ## `0.4.5`
 - upgrades:
     + *Go* 1.20.1
@@ -8,7 +16,7 @@
     + misc. lib upgrades for CVE remediation
 
 ## `0.4.4`
-- use `Metadata-Flavor` header when checking for *Google* metadata server (pr #82)
+- use `Metadata-Flavor` header when checking for *Google* metadata server (PR #82)
 - upgrades:
     + *Go* 1.18.8
     + latest *Ubuntu 22.04* (remediates [CVE-2022-3602](https://ubuntu.com/security/CVE-2022-3602) and [CVE-2022-3786](https://ubuntu.com/security/CVE-2022-3786))
