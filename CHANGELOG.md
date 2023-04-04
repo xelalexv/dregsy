@@ -1,12 +1,16 @@
 # Changelog
 
-## `master`
+## `0.5.0`
 - changed behavior: tag pruning no longer removes verbatim tags
-- allow digests in tags (issue #86)
-- support latest count limit for tag sets (issue #96)
 - support public *ECR* repos (issue #60)
+- allow digests in tags (issue #86)
 - use provided credentials with *GCR* (PR #92)
+- support latest count limit for tag sets (issue #96)
 - restart on config file change and receiving `SIGHUP` (issue #98)
+- upgrades:
+    + *Go* 1.20.2
+    + latest *Ubuntu 22.04* and *Alpine 3.17*
+    + *Skopeo* 1.11.2
 
 ## `0.4.5`
 - upgrades:
