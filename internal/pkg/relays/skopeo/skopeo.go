@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os/exec"
 	"strings"
 
@@ -144,7 +143,7 @@ func chooseOutStream(out io.Writer, verbose, isErrorStream bool) io.Writer {
 		}
 		return log.StandardLogger().WriterLevel(log.InfoLevel)
 	}
-	return ioutil.Discard
+	return io.Discard
 }
 
 //

@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -248,7 +247,7 @@ func (dc *dockerClient) handleLog(rc io.ReadCloser, err error, verbose bool) err
 	defer rc.Close()
 	out := dc.wrOut
 	if !verbose {
-		out = ioutil.Discard
+		out = io.Discard
 	}
 	terminalFd := os.Stdout.Fd()
 	isTerminal := dc.wrOut == os.Stdout && terminal.IsTerminal(int(terminalFd))
