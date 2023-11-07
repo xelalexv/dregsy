@@ -124,7 +124,7 @@ func (l *Location) validate() error {
 	// If the credentials were provided we're assuming the user wants to use
 	// them and not configure the refresher, otherwise (unless auth is disabled)
 	// we'll use the GCR refresher.
-	if l.IsGCR() && (!disableAuth || l.creds.Empty()) {
+	if l.IsGCR() && !disableAuth && l.creds.Empty() {
 		l.creds.SetRefresher(auth.NewGCRAuthRefresher())
 	}
 
