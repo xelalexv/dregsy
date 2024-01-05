@@ -108,8 +108,7 @@ func NewRepoList(registry string, insecure bool, typ ListSourceType,
 				list.source = newECR(registry, region, account)
 			}
 		} else {
-			list.source = newCatalog(registry, insecure,
-				strings.HasSuffix(server, "gcr.io"), listCreds)
+			list.source = newCatalog(registry, insecure, IsGCR(server), listCreds)
 		}
 
 	default:
