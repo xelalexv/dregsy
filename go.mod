@@ -5,13 +5,13 @@ go 1.20
 require (
 	github.com/aws/aws-sdk-go v1.38.13
 	github.com/blang/semver/v4 v4.0.0
-	github.com/docker/distribution v2.8.0+incompatible
-	github.com/docker/docker v20.10.22+incompatible
+	github.com/docker/distribution v2.8.3+incompatible
+	github.com/docker/docker v20.10.27+incompatible
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/google/go-containerregistry v0.2.1
 	github.com/sirupsen/logrus v1.8.1
-	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
+	golang.org/x/crypto v0.17.0
 	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -22,6 +22,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/cli v0.0.0-20200130152716-5d0cf8839492 // indirect
 	github.com/docker/docker-credential-helpers v0.6.3 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -43,10 +44,10 @@ require (
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect

@@ -113,7 +113,8 @@ function registry_up {
 #
 #
 function registry_down {
-    docker stop dregsy-test-registry
+    docker stop dregsy-test-registry || true
+    docker container wait dregsy-test-registry || true
 }
 
 #

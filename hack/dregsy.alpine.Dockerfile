@@ -16,7 +16,7 @@
 
 # Skopeo build, taken from https://github.com/bdwyertech/docker-skopeo
 #
-FROM docker.io/golang:1.20.2-alpine3.17@sha256:bba3c7269b3d4aa875230617947481439b92cab8853b59ff8709fb047587c2eb as skopeo
+FROM docker.io/golang:1.21.6-alpine3.18@sha256:6c3594a637fd59b8646e120c30465cbdc7b2b95567a80e777539578e8bada43d as skopeo
 
 ARG SKOPEO_VERSION
 
@@ -32,7 +32,7 @@ RUN apk add --no-cache --virtual .build-deps \
 
 # dregsy image
 #
-FROM docker.io/alpine:3.17.3@sha256:b6ca290b6b4cdcca5b3db3ffa338ee0285c11744b4a6abaa9627746ee3291d8d
+FROM docker.io/alpine:3.18.5@sha256:d695c3de6fcd8cfe3a6222b0358425d40adfd129a8a47c3416faff1a8aece389
 
 LABEL maintainer "vollschwitz@gmx.net"
 

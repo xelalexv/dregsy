@@ -173,6 +173,7 @@ func (l *RepoList) Get() ([]string, error) {
 	if ret, err := l.source.Retrieve(l.maxItems); err != nil {
 		return nil, err
 	} else {
+		log.Debugf("retrieved list: %v", ret)
 		l.cacheList(ret)
 		return ret, nil
 	}
