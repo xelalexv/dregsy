@@ -102,3 +102,8 @@ func isDockerHub(reg string) bool {
 		strings.HasSuffix(reg, ".docker.com") ||
 		strings.HasSuffix(reg, ".docker.io")
 }
+
+//
+func IsGCR(reg string) bool {
+	return reg == "gcr.io" || strings.HasSuffix(reg, ".gcr.io")
+}
