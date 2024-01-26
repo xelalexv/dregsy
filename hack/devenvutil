@@ -144,6 +144,41 @@ function remove_test_images {
 }
 
 #
+# build command binary
+#
+# $1    command
+# $2    target OS
+# $3    target architecture
+#
+function build_binary {
+
+    local binary="${BINARIES}/$1"
+
+    local extra_env
+    [[ "$3" != "arm" ]] || extra_env="-e GOARM=7"
+    [[ "$3" != "mips" ]] || extra_env="-e GOMIPS=softfloat"
+
+    local digest_ref="GO_IMAGE_DIGEST_${GOARCH}"
+
+    echo -e "building ${binary} for $2/$3, using build image ${GO_IMAGE}@sha256:${!digest_ref}"
+    # shellcheck disable=SC2086
+    docker run --rm --user "$(id -u):$(id -g)" \
+        -v "${ROOT}/${BINARIES}:/go/bin" ${CACHE_VOLS} \
+        -v "${ROOT}:/go/src/${REPO}" -w "/go/src/${REPO}" \
+        -e CGO_ENABLED=0 -e GOOS="$2" -e GOARCH="$3" ${extra_env} \
+        ${GO_IMAGE}@sha256:${!digest_ref} bash -c \
+            "go mod tidy && go build -v -tags netgo -installsuffix netgo \
+            -ldflags \"-w -X main.DregsyVersion=${DREGSY_VERSION}\" \
+            -o \"${binary}\" \"./cmd/$1/\""
+
+    local specifier="_${DREGSY_VERSION}_$2_$3"
+    zip -j "../${binary}${specifier}.zip" "../${binary}"
+    rm -f "../${binary}"
+
+    echo
+}
+
+#
 # $1    test image variant (`alpine` or `ubuntu`)
 #
 function run_tests {

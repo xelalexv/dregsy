@@ -18,7 +18,7 @@
 SHELL = /bin/bash
 
 REPO = dregsy
-DREGSY_VERSION = $$(git describe --always --tag --dirty)
+DREGSY_VERSION = $(shell git describe --always --tag --dirty)
 SKOPEO_VERSION = v1.14.1 # https://github.com/containers/skopeo/releases
 
 ROOT = $(shell pwd)
@@ -86,6 +86,8 @@ GOARCH = $(shell ./hack/devenvutil get_architecture)
 #			the configured build folder are used. These folders are removed when
 #			running ${DIM}make clean${NRM}. That way you can force a clean build/test, where all
 #			dependencies are retrieved & built inside the container.
+#
+#	${ITL}CROSS=y${NRM}		set this to build binaries for various platforms & architectures
 #
 #	${ITL}TEST_ALPINE=n${NRM}	when using this with the test target, tests will not be performed
 #	${ITL}TEST_UBUNTU=n${NRM}	for the respective image (${ITL}Alpine${NRM} or ${ITL}Ubuntu${NRM} based)
@@ -166,15 +168,18 @@ publish:
 dregsy: prep
 #	build the ${ITL}dregsy${NRM} binary
 #
-	echo "os: $(GOOS), arch: $(GOARCH)"
-	docker run --rm --user $(shell id -u):$(shell id -g) \
-		-v $(shell pwd)/$(BINARIES):/go/bin $(CACHE_VOLS) \
-		-v $(shell pwd):/go/src/$(REPO) -w /go/src/$(REPO) \
-		-e CGO_ENABLED=0 -e GOOS=$(GOOS) -e GOARCH=$(GOARCH) \
-		$(GO_IMAGE)@sha256:$(GO_IMAGE_DIGEST_$(GOARCH)) bash -c \
-			"go mod tidy && go build -v -tags netgo -installsuffix netgo \
-			-ldflags \"-w -X main.DregsyVersion=$(DREGSY_VERSION)\" \
-			-o $(BINARIES)/dregsy ./cmd/dregsy/"
+	rm -f $(BINARIES)/dregsy
+ifneq ($(CROSS),y)
+	$(call utils, build_binary dregsy $(GOOS) $(GOARCH) keep)
+else
+	$(call utils, build_binary dregsy linux amd64 keep)
+	$(call utils, build_binary dregsy linux arm64)
+	$(call utils, build_binary dregsy linux arm)
+	$(call utils, build_binary dregsy linux 386)
+endif
+	unzip -q $(BINARIES)/dregsy_*_linux_amd64.zip -d $(BINARIES) 2>/dev/null \
+		|| true
+	cd $(BINARIES); sha256sum dregsy_*.zip > checksums.txt
 
 
 .PHONY: imgdregsy

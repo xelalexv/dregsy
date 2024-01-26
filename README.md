@@ -317,6 +317,8 @@ Logging behavior can be changed with these environment variables:
 | `LOG_METHODS` | include method names in log messages | `true`, `false` |
 
 ### Running Natively
+Pre-built binaries are provided in the release section of this project. Note however that currently, only the `linux_amd64` flavor is tested upon release. All other binaries are untested. Feedback is welcome!
+
 If you run *dregsy* natively on your system, with relay type `docker`, the *Docker* daemon of your system will be used as the relay for all sync tasks, so all synced images will wind up in the *Docker* storage of that daemon.
 
 ### Running Inside a Container
