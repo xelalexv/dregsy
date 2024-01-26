@@ -1,5 +1,16 @@
 # Changelog
 
+## `0.5.1`
+- fixes:
+    + check for `gcr.io` as domain, as well as for `.gcr.io` as domain suffix (PR #110)
+    + corrected logic for setting *GCR* refresher, to allow using public *GCR* without authentication (PR #109)
+- upgrades:
+    + *Go* 1.21.6
+    + latest *Ubuntu 22.04* and *Alpine 3.18*
+    + *Skopeo* 1.14.1
+    + misc. lib upgrades for remediation of CVEs in dependencies
+- pre-built binaries for a few architectures are now also provided with each release; however, except for `linux_amd64` provided as untested! (#101)
+
 ## `0.5.0`
 - changed behavior: tag pruning no longer removes verbatim tags
 - support public *ECR* repos (issue #60)
