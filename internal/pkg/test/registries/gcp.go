@@ -18,7 +18,6 @@ package registries
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"testing"
@@ -90,7 +89,7 @@ func EmptyGARRepo(t *testing.T, p *test.Params) {
 // TODO: find out how to remove the repo
 func emptyGCPRepo(t *testing.T, repo gcrname.Repository) {
 
-	b, err := ioutil.ReadFile(os.Getenv(test.EnvGCPCreds))
+	b, err := os.ReadFile(os.Getenv(test.EnvGCPCreds))
 	if err != nil {
 		t.Fatal(err)
 	}
