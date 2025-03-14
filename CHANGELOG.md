@@ -1,5 +1,12 @@
 # Changelog
 
+## `0.5.2`
+- upgrades:
+    + *Go* 1.24.1
+    + latest *Ubuntu 24.04* and *Alpine 3.21*
+    + *Skopeo* 1.18.0
+    + misc. lib upgrades for remediation of CVEs in dependencies
+
 ## `0.5.1`
 - fixes:
     + check for `gcr.io` as domain, as well as for `.gcr.io` as domain suffix (PR #110)
