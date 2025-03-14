@@ -19,7 +19,7 @@ SHELL = /bin/bash
 
 REPO = dregsy
 DREGSY_VERSION = $(shell git describe --always --tag --dirty)
-SKOPEO_VERSION = v1.14.1 # https://github.com/containers/skopeo/releases
+SKOPEO_VERSION = v1.18.0 # https://github.com/containers/skopeo/releases
 
 ROOT = $(shell pwd)
 BUILD_OUTPUT =_build
@@ -27,12 +27,12 @@ BINARIES = $(BUILD_OUTPUT)/bin
 ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
 ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 
-GO_IMAGE = docker.io/golang:1.21.6
-# use digests of plain golang:{x:y:z} image
-GO_IMAGE_DIGEST_amd64 = 5c7c2c9f1a930f937a539ff66587b6947890079470921d62ef1a6ed24395b4b3 # linux/amd64
-GO_IMAGE_DIGEST_arm64 = ea3f343e515dd6d4c39e82757c186040f2838ea91e935670433b0849f0813ab5 # linux/arm64/v8
-GO_IMAGE_DIGEST_arm = fb3420044a05d239f768b02fde6c987729379b631f44f27c917880fe3d632c7b   # linux/arm/v7
-GO_IMAGE_DIGEST_386 = 7fd31c31aab449c1cc9a6a4cd498ab20a018de2f64b7ed151bcef3305270dee5   # linux/386
+GO_IMAGE = docker.io/golang:1.24.1
+# use manifest (not index!) digests of plain golang:{x:y:z} image
+GO_IMAGE_DIGEST_amd64 = 7ebae3e990ad9a8406da7ec4cd127decc408c98f8a88d0f2bef629bcaff691cd # linux/amd64
+GO_IMAGE_DIGEST_arm64 = fcac9ac2c01ddb5ea125d3d57e536bc890bd8d74a773b73cc9bf858630dfbd12 # linux/arm64/v8
+GO_IMAGE_DIGEST_arm = 1a9bc401e9504d096795eefa9a00d22fd57ea665dbc7694c4aea8c551a241d11   # linux/arm/v7
+GO_IMAGE_DIGEST_386 = afbaa9ed2766af436d3a71b162a3efbe7c364b39b6ba8a02b85e60f4a879fe7f   # linux/386
 
 GOOS = $(shell uname -s | tr A-Z a-z)
 GOARCH = $(shell ./hack/devenvutil get_architecture)

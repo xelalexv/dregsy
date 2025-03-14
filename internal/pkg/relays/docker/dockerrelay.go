@@ -31,16 +31,16 @@ import (
 
 const RelayID = "docker"
 
-//
+//-
 type RelayConfig struct {
 	DockerHost string `yaml:"dockerhost"`
 	APIVersion string `yaml:"api-version"`
 }
 
-//
+//-
 type Support struct{}
 
-//
+//-
 func (s *Support) Platform(p string) error {
 	if p == "all" {
 		return fmt.Errorf(
@@ -49,12 +49,12 @@ func (s *Support) Platform(p string) error {
 	return nil
 }
 
-//
+//-
 type DockerRelay struct {
 	client *dockerClient
 }
 
-//
+//-
 func NewDockerRelay(conf *RelayConfig, out io.Writer) (*DockerRelay, error) {
 
 	relay := &DockerRelay{}
@@ -80,7 +80,7 @@ func NewDockerRelay(conf *RelayConfig, out io.Writer) (*DockerRelay, error) {
 	return relay, nil
 }
 
-//
+//-
 func (r *DockerRelay) Prepare() error {
 
 	// when we begin, Docker daemon may not be ready yet, e.g. when dregsy runs
@@ -95,13 +95,13 @@ func (r *DockerRelay) Prepare() error {
 	return nil
 }
 
-//
+//-
 func (r *DockerRelay) Dispose() error {
 	log.WithField("relay", RelayID).Info("disposing relay")
 	return r.client.close()
 }
 
-//
+//-
 func (r *DockerRelay) Sync(opt *relays.SyncOptions) error {
 
 	log.WithFields(log.Fields{
@@ -212,17 +212,17 @@ func (r *DockerRelay) Sync(opt *relays.SyncOptions) error {
 	return nil
 }
 
-//
+//-
 func (r *DockerRelay) pull(ref, platform, auth string, allTags, verbose bool) error {
 	return r.client.pullImage(ref, allTags, platform, auth, verbose)
 }
 
-//
+//-
 func (r *DockerRelay) list(ref string) ([]*image, error) {
 	return r.client.listImages(ref)
 }
 
-//
+//-
 func (r *DockerRelay) tag(images []*image, targetRef string) error {
 
 	for _, img := range images {
@@ -250,12 +250,12 @@ func (r *DockerRelay) tag(images []*image, targetRef string) error {
 	return nil
 }
 
-//
+//-
 func (r *DockerRelay) push(ref, platform, auth string, verbose bool) error {
 	return r.client.pushImage(ref, true, platform, auth, verbose)
 }
 
-//
+//-
 func tagFromDigest(d string) string {
 
 	if util.IsDigest(d) {

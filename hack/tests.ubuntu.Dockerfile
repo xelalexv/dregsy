@@ -36,8 +36,8 @@ RUN mkdir -p ${GOPATH}/src ${GOPATH}/bin ${GOPATH}/pkg ${GOCACHE}
 
 # non-root user
 ARG USER=go
-RUN groupadd -g ${GROUP_ID:-1000} ${USER} && \
-    useradd -l -u ${USER_ID:-1000} -g ${USER} ${USER} && \
+RUN groupadd -o -g ${GROUP_ID:-1000} ${USER} && \
+    useradd -l -o -u ${USER_ID:-1000} -g ${USER} ${USER} && \
     install -d -m 0755 -o ${USER} -g ${USER} /home/${USER}
 ENV HOME /home/${USER}
 USER ${USER}
