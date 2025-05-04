@@ -61,8 +61,12 @@ type catalog struct {
 
 //
 func (c *catalog) Retrieve(maxItems int) ([]string, error) {
+	var regopts []gocrname.Option
+	if c.insecure {
+		regopts = []gocrname.Option{gocrname.Insecure}
+	}
 
-	reg, err := gocrname.NewRegistry(c.registry)
+	reg, err := gocrname.NewRegistry(c.registry, regopts...)
 	if err != nil {
 		return nil, fmt.Errorf("invalid registry: %v", err)
 	}
