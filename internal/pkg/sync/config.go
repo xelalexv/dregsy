@@ -18,8 +18,8 @@ package sync
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
+	"os"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -241,7 +241,7 @@ func (c *SyncConfig) isChanged(evt fsnotify.Event) bool {
 //
 func LoadConfig(file string) (*SyncConfig, error) {
 
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 
 	if err != nil {
 		return nil, fmt.Errorf("error loading config file '%s': %v", file, err)

@@ -19,7 +19,6 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -104,7 +103,7 @@ func hasGoogleMetadataServer() bool {
 //
 func gcpTokenFromCreds() (string, time.Time, error) {
 
-	b, err := ioutil.ReadFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+	b, err := os.ReadFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 	if err != nil {
 		return "", time.Time{}, err
 	}
