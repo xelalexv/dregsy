@@ -14,26 +14,43 @@
 # limitations under the License.
 #
 
-FROM xelalex/dregsy:latest-alpine
+FROM docker.io/golang:1.24.13-alpine3.22@sha256:3641e0d9b931dc4f2f185dcd669c4679670e9277c8166a838ddb98a2d4389cb5 AS skopeo
 
-# install & configure Go
-RUN apk add --no-cache go
-ENV GOROOT /usr/lib/go
-ENV GOPATH /go
-ENV GOCACHE /.cache
-ENV PATH /go/bin:${PATH}
-RUN mkdir -p ${GOPATH}/src ${GOPATH}/bin ${GOPATH}/pkg ${GOCACHE}
+ARG SKOPEO_VERSION
 
-# non-root user
-ARG USER=go
-ENV HOME /home/${USER}
-RUN apk add --update sudo
-RUN adduser -D ${USER} && \
-    adduser ${USER} ping && \
-    echo "${USER} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/${USER} && \
-    chmod 0440 /etc/sudoers.d/${USER}
-USER ${USER}
+RUN apk add --no-cache \
+        git \
+        make \
+        gcc \
+        musl-dev \
+        pkgconfig \
+        gpgme-dev \
+        libassuan-dev \
+        btrfs-progs-dev \
+        libseccomp-dev \
+        ostree-dev \
+        containers-common \
+        go-md2man
 
-WORKDIR ${GOPATH}
+RUN git clone --depth 1 --branch ${SKOPEO_VERSION} \
+        https://github.com/containers/skopeo.git /tmp/skopeo
 
-CMD ["go", "version"]
+WORKDIR /tmp/skopeo
+
+RUN make bin/skopeo
+
+FROM alpine:3.22
+
+RUN apk add --no-cache \
+        ca-certificates \
+        gpgme \
+        tzdata \
+        openssl
+
+COPY --from=skopeo /tmp/skopeo/bin/skopeo /usr/local/bin/skopeo
+
+ARG binaries=_build/bin
+
+COPY ${binaries}/dregsy /usr/local/bin/dregsy
+
+ENTRYPOINT ["/usr/local/bin/dregsy"]

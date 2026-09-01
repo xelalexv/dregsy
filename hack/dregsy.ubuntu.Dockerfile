@@ -1,5 +1,5 @@
 #
-# Copyright 2021 Alexander Vollschwitz
+# Copyright 2020 Alexander Vollschwitz
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,51 +14,30 @@
 # limitations under the License.
 #
 
-# Skopeo build
-#
-FROM docker.io/golang:1.24.1@sha256:7ebae3e990ad9a8406da7ec4cd127decc408c98f8a88d0f2bef629bcaff691cd as skopeo
+FROM ubuntu:24.04
 
+ARG binaries=_build/bin
 ARG SKOPEO_VERSION
 
-WORKDIR /go/src/github.com/containers/skopeo
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends --fix-missing \
-        git libbtrfs-dev libgpgme-dev liblvm2-dev \
-    && git clone --single-branch --branch "${SKOPEO_VERSION}" \
-        https://github.com/containers/skopeo.git . \
-    && go build -ldflags="-s -w" -o bin/skopeo ./cmd/skopeo
-
-
-# dregsy image
-#
-FROM docker.io/ubuntu:24.04@sha256:72297848456d5d37d1262630108ab308d3e9ec7ed1c3286a32fe09856619a782
-
-LABEL maintainer "vollschwitz@gmx.net"
-
-ARG binaries
-
 ENV DEBIAN_FRONTEND=noninteractive
-ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes
 
 RUN apt-get update && \
-    apt-get upgrade -y --fix-missing && \
-    apt-get install -y --no-install-recommends --fix-missing \
+    apt-get install -y --no-install-recommends \
         ca-certificates \
-        apt-utils \
-        gpg \
         curl \
-        libgpgme11 \
-        libdevmapper1.02.1 && \
-    apt-get clean -y && \
+        jq \
+        skopeo \
+        tzdata && \
+    apt-get clean && \
     rm -rf \
-        /var/cache/debconf/* \
         /var/lib/apt/lists/* \
+        /var/cache/apt/* \
         /var/log/* \
         /tmp/* \
         /var/tmp/*
 
-COPY --from=skopeo /go/src/github.com/containers/skopeo/bin/skopeo /usr/bin
-COPY ${binaries}/dregsy /usr/local/bin
+COPY ${binaries}/dregsy_linux_amd64 /usr/local/bin/dregsy
 
-CMD ["dregsy", "-config=config.yaml"]
+RUN chmod 0755 /usr/local/bin/dregsy
+
+ENTRYPOINT ["/usr/local/bin/dregsy"]
