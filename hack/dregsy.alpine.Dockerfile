@@ -14,10 +14,21 @@
 # limitations under the License.
 #
 
-FROM alpine:3.22
+# Build dregsy from source using the required Go toolchain.
+FROM docker.io/golang:1.24.13-alpine3.22 AS builder
 
-ARG binaries=_build/bin
-ARG SKOPEO_VERSION
+WORKDIR /src
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-s -w" \
+    -o /out/dregsy \
+    ./cmd/dregsy
+
+
+# Runtime image.
+FROM alpine:3.22
 
 RUN apk add --no-cache \
         ca-certificates \
@@ -26,7 +37,7 @@ RUN apk add --no-cache \
         skopeo \
         tzdata
 
-COPY ${binaries}/dregsy_linux_amd64 /usr/local/bin/dregsy
+COPY --from=builder /out/dregsy /usr/local/bin/dregsy
 
 RUN chmod 0755 /usr/local/bin/dregsy
 

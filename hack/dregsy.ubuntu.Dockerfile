@@ -14,10 +14,21 @@
 # limitations under the License.
 #
 
-FROM ubuntu:24.04
+# Build dregsy from source using the required Go toolchain.
+FROM docker.io/golang:1.24.13 AS builder
 
-ARG binaries=_build/bin
-ARG SKOPEO_VERSION
+WORKDIR /src
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-s -w" \
+    -o /out/dregsy \
+    ./cmd/dregsy
+
+
+# Runtime image.
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -36,7 +47,7 @@ RUN apt-get update && \
         /tmp/* \
         /var/tmp/*
 
-COPY ${binaries}/dregsy_linux_amd64 /usr/local/bin/dregsy
+COPY --from=builder /out/dregsy /usr/local/bin/dregsy
 
 RUN chmod 0755 /usr/local/bin/dregsy
 
