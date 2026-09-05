@@ -39,6 +39,19 @@ WORKDIR /tmp/skopeo
 
 RUN make bin/skopeo
 
+FROM docker.io/golang:1.24.13-alpine3.22@sha256:3641e0d9b931dc4f2f185dcd669c4679670e9277c8166a838ddb98a2d4389cb5 AS dregsy
+
+WORKDIR /src
+
+COPY . .
+
+ARG DREGSY_VERSION
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-s -w -X main.DregsyVersion=${DREGSY_VERSION}" \
+    -o /out/dregsy \
+    ./cmd/dregsy
+
 FROM alpine:3.22
 
 RUN apk add --no-cache \
@@ -48,9 +61,6 @@ RUN apk add --no-cache \
         openssl
 
 COPY --from=skopeo /tmp/skopeo/bin/skopeo /usr/local/bin/skopeo
-
-ARG binaries=_build/bin
-
-COPY ${binaries}/dregsy /usr/local/bin/dregsy
+COPY --from=dregsy /out/dregsy /usr/local/bin/dregsy
 
 ENTRYPOINT ["/usr/local/bin/dregsy"]

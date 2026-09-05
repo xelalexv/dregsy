@@ -21,8 +21,10 @@ WORKDIR /src
 
 COPY . .
 
+ARG DREGSY_VERSION
+
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" \
+    go build -ldflags="-s -w -X main.DregsyVersion=${DREGSY_VERSION}" \
     -o /out/dregsy \
     ./cmd/dregsy
 

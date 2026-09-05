@@ -189,11 +189,13 @@ imgdregsy:
 #
 	echo -e "\nBuilding Alpine-based image...\n"
 	docker build -t xelalex/$(REPO):latest-alpine \
+		--build-arg DREGSY_VERSION=$(DREGSY_VERSION) \
 		-f ./hack/dregsy.alpine.Dockerfile .
 	# for historical reasons, the `xelalex/dregsy` image is the Alpine image
 	docker tag xelalex/$(REPO):latest-alpine xelalex/$(REPO):latest
 	echo -e "\n\nBuilding Ubuntu-based image...\n"
 	docker build -t xelalex/$(REPO):latest-ubuntu \
+		--build-arg DREGSY_VERSION=$(DREGSY_VERSION) \
 		-f ./hack/dregsy.ubuntu.Dockerfile .
 	echo -e "\nDone\n"
 
@@ -205,10 +207,12 @@ imgtests:
 #
 	echo -e "\nBuilding Alpine-based test image...\n"
 	docker build -t xelalex/$(REPO)-tests-alpine \
+		--build-arg DREGSY_VERSION=$(DREGSY_VERSION) \
 		--build-arg SKOPEO_VERSION=$(SKOPEO_VERSION) \
 		-f ./hack/tests.alpine.Dockerfile .
 	echo -e "\n\nBuilding Ubuntu-based test image...\n"
 	docker build -t xelalex/$(REPO)-tests-ubuntu \
+		--build-arg DREGSY_VERSION=$(DREGSY_VERSION) \
 		--build-arg SKOPEO_VERSION=$(SKOPEO_VERSION) \
 		-f ./hack/tests.ubuntu.Dockerfile .
 	echo -e "\nDone\n"

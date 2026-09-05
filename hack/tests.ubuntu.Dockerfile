@@ -42,6 +42,19 @@ WORKDIR /go/src/github.com/containers/skopeo
 
 RUN make bin/skopeo
 
+FROM docker.io/golang:1.24.13@sha256:d2d2bc1c84f7e60d7d2438a3836ae7d0c847f4888464e7ec9ba3a1339a1ee804 AS dregsy
+
+WORKDIR /src
+
+COPY . .
+
+ARG DREGSY_VERSION
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-s -w -X main.DregsyVersion=${DREGSY_VERSION}" \
+    -o /out/dregsy \
+    ./cmd/dregsy
+
 FROM ubuntu:24.04
 
 RUN apt-get update && \
@@ -58,9 +71,6 @@ RUN apt-get update && \
         /var/tmp/*
 
 COPY --from=skopeo /go/src/github.com/containers/skopeo/bin/skopeo /usr/local/bin/skopeo
-
-ARG binaries=_build/bin
-
-COPY ${binaries}/dregsy /usr/local/bin/dregsy
+COPY --from=dregsy /out/dregsy /usr/local/bin/dregsy
 
 ENTRYPOINT ["/usr/local/bin/dregsy"]
