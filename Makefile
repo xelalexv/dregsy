@@ -27,9 +27,9 @@ BINARIES = $(BUILD_OUTPUT)/bin
 ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
 ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 
-GO_IMAGE = docker.io/golang:1.24.1
+GO_IMAGE = docker.io/golang:1.24.13
 # use manifest (not index!) digests of plain golang:{x:y:z} image
-GO_IMAGE_DIGEST_amd64 = 7ebae3e990ad9a8406da7ec4cd127decc408c98f8a88d0f2bef629bcaff691cd # linux/amd64
+GO_IMAGE_DIGEST_amd64 = d2d2bc1c84f7e60d7d2438a3836ae7d0c847f4888464e7ec9ba3a1339a1ee804 # linux/amd64
 GO_IMAGE_DIGEST_arm64 = fcac9ac2c01ddb5ea125d3d57e536bc890bd8d74a773b73cc9bf858630dfbd12 # linux/arm64/v8
 GO_IMAGE_DIGEST_arm = 1a9bc401e9504d096795eefa9a00d22fd57ea665dbc7694c4aea8c551a241d11   # linux/arm/v7
 GO_IMAGE_DIGEST_386 = afbaa9ed2766af436d3a71b162a3efbe7c364b39b6ba8a02b85e60f4a879fe7f   # linux/386
@@ -185,19 +185,17 @@ endif
 .PHONY: imgdregsy
 imgdregsy:
 #	build the ${ITL}dregsy${NRM} container images (Alpine and Ubuntu based);
-#	assumes binary was built
+#	builds dregsy from source inside the Docker builder
 #
 	echo -e "\nBuilding Alpine-based image...\n"
 	docker build -t xelalex/$(REPO):latest-alpine \
-		--build-arg binaries=$(BINARIES) \
-		--build-arg SKOPEO_VERSION=$(SKOPEO_VERSION) \
+		--build-arg DREGSY_VERSION=$(DREGSY_VERSION) \
 		-f ./hack/dregsy.alpine.Dockerfile .
 	# for historical reasons, the `xelalex/dregsy` image is the Alpine image
 	docker tag xelalex/$(REPO):latest-alpine xelalex/$(REPO):latest
 	echo -e "\n\nBuilding Ubuntu-based image...\n"
 	docker build -t xelalex/$(REPO):latest-ubuntu \
-		--build-arg binaries=$(BINARIES) \
-		--build-arg SKOPEO_VERSION=$(SKOPEO_VERSION) \
+		--build-arg DREGSY_VERSION=$(DREGSY_VERSION) \
 		-f ./hack/dregsy.ubuntu.Dockerfile .
 	echo -e "\nDone\n"
 
@@ -209,12 +207,15 @@ imgtests:
 #
 	echo -e "\nBuilding Alpine-based test image...\n"
 	docker build -t xelalex/$(REPO)-tests-alpine \
+		--build-arg DREGSY_VERSION=$(DREGSY_VERSION) \
+		--build-arg SKOPEO_VERSION=$(SKOPEO_VERSION) \
 		-f ./hack/tests.alpine.Dockerfile .
 	echo -e "\n\nBuilding Ubuntu-based test image...\n"
 	docker build -t xelalex/$(REPO)-tests-ubuntu \
+		--build-arg DREGSY_VERSION=$(DREGSY_VERSION) \
+		--build-arg SKOPEO_VERSION=$(SKOPEO_VERSION) \
 		-f ./hack/tests.ubuntu.Dockerfile .
 	echo -e "\nDone\n"
-
 
 .PHONY: rmi
 rmi:

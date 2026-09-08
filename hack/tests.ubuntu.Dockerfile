@@ -1,5 +1,5 @@
 #
-# Copyright 2021 Alexander Vollschwitz
+# Copyright 2020 Alexander Vollschwitz
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,34 +14,63 @@
 # limitations under the License.
 #
 
-FROM xelalex/dregsy:latest-ubuntu
+FROM docker.io/golang:1.24.13@sha256:d2d2bc1c84f7e60d7d2438a3836ae7d0c847f4888464e7ec9ba3a1339a1ee804 AS skopeo
 
-# install & configure Go
+ARG SKOPEO_VERSION
+
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends --fix-missing \
-        golang && \
-    apt-get clean -y && \
+    apt-get install -y --no-install-recommends \
+        git \
+        make \
+        gcc \
+        pkg-config \
+        libgpgme-dev \
+        libassuan-dev \
+        libbtrfs-dev \
+        libdevmapper-dev \
+        libseccomp-dev \
+        libostree-dev \
+        ca-certificates \
+        libgpgme11 \
+        go-md2man && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 --branch ${SKOPEO_VERSION} \
+        https://github.com/containers/skopeo.git /go/src/github.com/containers/skopeo
+
+WORKDIR /go/src/github.com/containers/skopeo
+
+RUN make bin/skopeo
+
+FROM docker.io/golang:1.24.13@sha256:d2d2bc1c84f7e60d7d2438a3836ae7d0c847f4888464e7ec9ba3a1339a1ee804 AS dregsy
+
+WORKDIR /src
+
+COPY . .
+
+ARG DREGSY_VERSION
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-s -w -X main.DregsyVersion=${DREGSY_VERSION}" \
+    -o /out/dregsy \
+    ./cmd/dregsy
+
+FROM ubuntu:24.04
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libgpgme11 \
+        tzdata \
+        openssl && \
+    apt-get clean && \
     rm -rf \
-        /var/cache/debconf/* \
         /var/lib/apt/lists/* \
-        /var/log/* \
+        /var/cache/apt/* \
         /tmp/* \
         /var/tmp/*
 
-ENV GOROOT /usr/lib/go
-ENV GOPATH /go
-ENV GOCACHE /.cache
-ENV PATH /go/bin:${PATH}
-RUN mkdir -p ${GOPATH}/src ${GOPATH}/bin ${GOPATH}/pkg ${GOCACHE}
+COPY --from=skopeo /go/src/github.com/containers/skopeo/bin/skopeo /usr/local/bin/skopeo
+COPY --from=dregsy /out/dregsy /usr/local/bin/dregsy
 
-# non-root user
-ARG USER=go
-RUN groupadd -o -g ${GROUP_ID:-1000} ${USER} && \
-    useradd -l -o -u ${USER_ID:-1000} -g ${USER} ${USER} && \
-    install -d -m 0755 -o ${USER} -g ${USER} /home/${USER}
-ENV HOME /home/${USER}
-USER ${USER}
-
-WORKDIR ${GOPATH}
-
-CMD ["go", "version"]
+ENTRYPOINT ["/usr/local/bin/dregsy"]
