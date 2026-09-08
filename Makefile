@@ -185,7 +185,7 @@ endif
 .PHONY: imgdregsy
 imgdregsy:
 #	build the ${ITL}dregsy${NRM} container images (Alpine and Ubuntu based);
-#	assumes binary was built
+#	builds dregsy from source inside the Docker builder
 #
 	echo -e "\nBuilding Alpine-based image...\n"
 	docker build -t xelalex/$(REPO):latest-alpine \
